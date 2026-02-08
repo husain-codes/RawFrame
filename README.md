@@ -13,7 +13,7 @@ image processing fundamentals is critical for debugging
 camera pipelines, ISP behavior, and performance issues.
 
 ## Folder Overview
-- 01_c_from_scratch: Pixel-level implementations
+- 01_c_programs: Pixel-level implementations
 - 02_cimg_library: Lightweight abstraction
 - 03_opencv: Industry-standard library usage
 
