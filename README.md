@@ -13,4 +13,4 @@ This library is designed to:
 - Work directly with raw buffers (RGB / RGBA)
 - Explore performance-aware algorithm implementation
 - Simulate basic ISP-style processing pipelines
-- It uses SDL2 only for display image
+- It uses SDL2 only to display image
