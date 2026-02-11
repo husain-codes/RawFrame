@@ -1,19 +1,22 @@
-# Image Processing
+# C-ImageLab
 
-This repository demonstrates image processing concepts
-implemented at three levels:
+A lightweight, standalone C library for fundamental image processing operations built from scratch.
 
-1. Pure C (from scratch)
-2. CImg library
-3. OpenCV
+This project focuses on understanding raw pixel buffers, memory layout, stride handling, and algorithm implementation at a systems level.
 
-## Motivation
-As an Android Camera / Multimedia engineer, understanding
-image processing fundamentals is critical for debugging
-camera pipelines, ISP behavior, and performance issues.
+## Goal
+The goal of C-ImageLab is to implement core image processing algorithms in pure C without relying on high-level image processing frameworks.
 
-## Folder Overview
-- 01_c_programs: Pixel-level implementations
-- 02_cimg_library: Lightweight abstraction
-- 03_opencv: Industry-standard library usage
+This library is designed to:
 
+Strengthen low-level C programming skills
+
+Understand image memory layout and pixel formats
+
+Work directly with raw buffers (RGB / RGBA)
+
+Explore performance-aware algorithm implementation
+
+Simulate basic ISP-style processing pipelines
+
+It uses SDL2 only for display image
