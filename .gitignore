@@ -1,0 +1,26 @@
+# Build directory
+build/
+
+# CMake generated files
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# Object files
+*.o
+*.obj
+
+# Libraries
+*.a
+*.so
+*.dll
+
+# Executables
+*.out
+*.exe
+
+# Editor files
+*.swp
+*.swo
+*~
