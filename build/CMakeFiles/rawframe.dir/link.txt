@@ -1,2 +1,0 @@
-/usr/bin/ar qc librawframe.a CMakeFiles/rawframe.dir/src/core/img.c.o CMakeFiles/rawframe.dir/src/core/img_memory.c.o CMakeFiles/rawframe.dir/src/io/bmp_reader.c.o CMakeFiles/rawframe.dir/src/io/bmp_writer.c.o CMakeFiles/rawframe.dir/src/processing/img_copy.c.o CMakeFiles/rawframe.dir/src/processing/img_grayscale.c.o CMakeFiles/rawframe.dir/src/processing/img_invert.c.o CMakeFiles/rawframe.dir/src/processing/img_blur.c.o
-/usr/bin/ranlib librawframe.a

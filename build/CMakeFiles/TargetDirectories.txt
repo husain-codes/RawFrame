@@ -1,4 +1,0 @@
-/home/husain/RawFrame/build/CMakeFiles/rawframe.dir
-/home/husain/RawFrame/build/CMakeFiles/example_copy.dir
-/home/husain/RawFrame/build/CMakeFiles/edit_cache.dir
-/home/husain/RawFrame/build/CMakeFiles/rebuild_cache.dir
