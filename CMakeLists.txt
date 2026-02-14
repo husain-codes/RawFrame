@@ -22,7 +22,7 @@ include_directories(include)
 
 set(RAWFRAME_CORE
     src/core/img.c
-    src/core/img_memory.c
+    src/core/img_format.c
 )
 
 set(RAWFRAME_IO
