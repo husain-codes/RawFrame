@@ -1,0 +1,1 @@
+/usr/bin/cc CMakeFiles/example_copy.dir/examples/example_copy.c.o -o example_copy  librawframe.a 
