@@ -74,8 +74,8 @@ endif()
 #add_executable(example_load_display examples/example_load_display.c)
 #target_link_libraries(example_load_display rawframe)
 
-add_executable(example_copy examples/example_copy.c)
-target_link_libraries(example_copy rawframe)
+add_executable(image_copy examples/image_copy.c)
+target_link_libraries(image_copy rawframe)
 
 #add_executable(example_processing examples/example_processing.c)
 #target_link_libraries(example_processing rawframe)
