@@ -88,15 +88,6 @@ img_t* img_load_bmp(char* path)
 	        return NULL;
 	    }
 	    fseek(img_file,padding,SEEK_CUR);
-        dst_y = bottom_up ? height - 1 - pixel_y : pixel_y;
-	unsigned char* dst_row = img->data + dst_y * bytes_per_row;
-	if(fread(dst_row, 1, bytes_per_row, img_file) != bytes_per_row)
-        {
-            fprintf(stderr,"Unable to copy raw pixel values at height : %d\n",pixel_y);
-            fclose(img_file);
-            return NULL;
-        }
-        fseek(img_file,padding,SEEK_CUR);
     }
     fclose(img_file);
     return img;
