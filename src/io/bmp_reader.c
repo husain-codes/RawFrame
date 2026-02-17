@@ -62,6 +62,7 @@ img_t* img_load_bmp(char* path)
 	fclose(img_file);
 	return NULL;
     }
+
     bool bottom_up = info_header.height > 0 ;
     int height = bottom_up ? info_header.height : -(info_header.height);
     img_t* img = img_create(info_header.width, height, IMG_FMT_RGB24);
