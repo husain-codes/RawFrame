@@ -7,6 +7,7 @@ size_t img_format_bytes_per_pixel(img_format_t format) {
   case IMG_FMT_GRAY8:
     return 1;
   case IMG_FMT_RGB24:
+  case IMG_FMT_BGR24:
     return 3;
   case IMG_FMT_RGBA32:
     return 4;

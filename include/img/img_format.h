@@ -7,6 +7,7 @@ typedef enum {
   IMG_FMT_UNKNOWN = 0,
   IMG_FMT_GRAY8,
   IMG_FMT_RGB24,
+  IMG_FMT_BGR24,
   IMG_FMT_RGBA32
 } img_format_t;
 

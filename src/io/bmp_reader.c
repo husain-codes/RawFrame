@@ -56,7 +56,7 @@ img_t *img_load_bmp(char *path) {
 
   bool bottom_up = info_header.height > 0;
   int height = bottom_up ? info_header.height : -(info_header.height);
-  img_t *img = img_create(info_header.width, height, IMG_FMT_RGB24);
+  img_t *img = img_create(info_header.width, height, IMG_FMT_BGR24);
   if (!img) {
     fprintf(stderr, "Unable to create image\n");
     return NULL;
@@ -69,11 +69,12 @@ img_t *img_load_bmp(char *path) {
 
   for (int pixel_y = 0; pixel_y < height; pixel_y++) {
     dst_y = bottom_up ? height - 1 - pixel_y : pixel_y;
-    unsigned char *dst_row = img->data + dst_y * bytes_per_row;
+    unsigned char *dst_row = img->data + dst_y * img->stride;
     if (fread(dst_row, 1, bytes_per_row, img_file) != bytes_per_row) {
       fprintf(stderr, "Unable to copy raw pixel values at height : %d\n",
               pixel_y);
       fclose(img_file);
+      img_destroy(img);
       return NULL;
     }
     fseek(img_file, padding, SEEK_CUR);
