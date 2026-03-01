@@ -59,3 +59,62 @@ Each image object stores:
 - Pointer to pixel data
 
 Pixel data is stored in row-major order.
+
+---
+
+## 💡 Requirements
+
+To build **RawFrame** you'll need the following tools installed on your system:
+
+- **CMake** (version 3.10 or newer)
+- A C compiler (e.g. `gcc`, `clang`, or MSVC on Windows)
+- Standard build tools (`make` on Unix-like systems, or the appropriate generator for CMake)
+
+### Installing CMake
+
+On Ubuntu/Debian:
+
+```sh
+sudo apt update
+sudo apt install cmake
+```
+
+On Fedora/CentOS/RHEL:
+
+```sh
+sudo dnf install cmake    # or yum on older releases
+```
+
+On Windows, download the installer from the [CMake website](https://cmake.org/download/) or use `choco install cmake` if you have Chocolatey.
+
+On macOS, use `brew install cmake` with Homebrew.
+
+Ensure `cmake --version` prints a valid version before continuing.
+
+---
+
+## 🛠️ Building the Library
+
+The project uses a conventional out-of-source build using CMake. From the repository root run:
+
+```sh
+mkdir -p build && cd build
+cmake ..              # configure the project; you may specify a different generator
+cmake --build .       # builds the default target (usually 'all')
+```
+
+If you are on Unix-like systems you can also use `make` after configuration:
+
+```sh
+make                  # compile all targets
+```
+
+To build the example programs or run tests, use:
+
+```sh
+cmake --build . --target example_copy
+cmake --build . --target image_copy
+cmake --build . --target tests
+```
+
+> Binaries and sample BMP files will appear in the `build/` directory once the targets complete.
