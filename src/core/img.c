@@ -27,7 +27,8 @@ img_t *img_create(uint32_t width, uint32_t height, img_format_t format) {
   img->width = width;
   img->height = height;
   img->format = format;
-  img->stride = width * bpp;
+  img->stride =
+      width * bpp; // number of bytes in a row of pixel data, excluding padding
   size_t buffer_size = img->stride * height;
   img->data = malloc(buffer_size);
   if (!img->data) {

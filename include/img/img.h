@@ -9,7 +9,7 @@
 typedef struct {
   uint32_t width;
   uint32_t height;
-  size_t stride;
+  size_t stride; // number of bytes in a row of pixel data, excluding padding
   img_format_t format;
   uint8_t *data;
 } img_t;

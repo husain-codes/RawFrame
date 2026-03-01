@@ -27,7 +27,7 @@ int main(int argc, char *argv[]) {
     int x = samples[i][0];
     int y = samples[i][1];
 
-    unsigned char *pixel = image->data + (y * w + x) * 3;
+    unsigned char *pixel = image->data + y * image->stride + x * 3;
     unsigned char r = pixel[0];
     unsigned char g = pixel[1];
     unsigned char b = pixel[2];
@@ -41,23 +41,24 @@ int main(int argc, char *argv[]) {
     printf("Failed to copy image\n");
     return -1;
   }
-  int wc = copy->width;
-  int hc = copy->height;
+
   for (int i = 0; i < 3; i++) {
     int x = samples[i][0];
     int y = samples[i][1];
 
-    unsigned char *pixel = copy->data + (y * wc + x) * 3;
+    unsigned char *pixel = copy->data + y * copy->stride + x * 3;
     unsigned char r = pixel[0];
     unsigned char g = pixel[1];
     unsigned char b = pixel[2];
     printf("COPY: Pixel (%d,%d) -> R=%u G=%u B=%u\n", x, y, r, g, b);
   }
-  /*     if (img_save_bmp("output.bmp",copy) != 0)
-       {
-           fprintf(stderr,"Failed to save output.bmp\n");
-       }
- */
+  if (img_save_bmp("output.bmp", copy) != 0) {
+    fprintf(stderr, "Failed to save output.bmp\n");
+    img_destroy(image);
+    image = NULL;
+    return -1;
+  }
+
   printf("Image copied and saved to output.bmp\n");
   // Clean up resources.
   img_destroy(image);

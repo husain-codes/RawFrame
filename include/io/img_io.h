@@ -29,4 +29,7 @@ typedef struct {
 
 img_t *img_load_bmp(char *path);
 img_t *img_copy(img_t *img);
+int img_save_bmp(const char *path, img_t *img);
+int initialize_bmp_header(BMHEADER *header, BMINFOHEADER *info_header,
+                          img_t *img);
 #endif
