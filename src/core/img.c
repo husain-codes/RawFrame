@@ -112,7 +112,7 @@ int img_set_pixel(img_t *img, int x, int y, pixel_t p) {
   uint8_t *pixel_data = row + x * bpp;
   switch (img->format) {
   case IMG_FMT_GRAY8:
-    pixel_data[0] = 0.299 * p.r + 0.587 * p.g + 0.114 * p.b;
+    pixel_data[0] = (uint8_t)(0.299 * p.r + 0.587 * p.g + 0.114 * p.b);
     break;
   case IMG_FMT_RGB24:
     pixel_data[0] = p.r;
