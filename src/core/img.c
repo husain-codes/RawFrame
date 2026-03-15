@@ -1,5 +1,6 @@
 #include <img/img.h>
 #include <stddef.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -45,4 +46,93 @@ void img_destroy(img_t *img) {
     return;
   free(img->data);
   free(img);
+}
+
+/* Function to get pixel value at (x, y) and store it in out.
+ * return 0 on success.
+ * return -1 on failure.
+ */
+int img_get_pixel(img_t *img, int x, int y, pixel_t *out) {
+  if (!img || !out || x < 0 || y < 0 || x >= img->width || y >= img->height) {
+    fprintf(stderr, "Invalid input to img_get_pixel\n");
+    return -1;
+  }
+  size_t bpp = img_format_bytes_per_pixel(img->format);
+  if (bpp == 0) {
+    fprintf(stderr, "Unsupported image format\n");
+    return -1;
+  }
+  uint8_t *row = img->data + y * img->stride;
+  uint8_t *pixel_data = row + x * bpp;
+  switch (img->format) {
+  case IMG_FMT_GRAY8:
+    out->r = out->g = out->b = pixel_data[0];
+    out->a = 255;
+    break;
+  case IMG_FMT_RGB24:
+    out->r = pixel_data[0];
+    out->g = pixel_data[1];
+    out->b = pixel_data[2];
+    out->a = 255;
+    break;
+  case IMG_FMT_BGR24:
+    out->b = pixel_data[0];
+    out->g = pixel_data[1];
+    out->r = pixel_data[2];
+    out->a = 255;
+    break;
+  case IMG_FMT_RGBA32:
+    out->r = pixel_data[0];
+    out->g = pixel_data[1];
+    out->b = pixel_data[2];
+    out->a = pixel_data[3];
+    break;
+  default:
+    fprintf(stderr, "Unsupported image format\n");
+    return -1;
+  }
+  return 0;
+}
+
+/* Function to set pixel value at (x, y) to p.
+ * return 0 on success.
+ * return -1 on failure.
+ */
+int img_set_pixel(img_t *img, int x, int y, pixel_t p) {
+  if (!img || x < 0 || y < 0 || x >= img->width || y >= img->height) {
+    fprintf(stderr, "Invalid input to img_set_pixel\n");
+    return -1;
+  }
+  size_t bpp = img_format_bytes_per_pixel(img->format);
+  if (bpp == 0) {
+    fprintf(stderr, "Unsupported image format\n");
+    return -1;
+  }
+  uint8_t *row = img->data + y * img->stride;
+  uint8_t *pixel_data = row + x * bpp;
+  switch (img->format) {
+  case IMG_FMT_GRAY8:
+    pixel_data[0] = 0.299 * p.r + 0.587 * p.g + 0.114 * p.b;
+    break;
+  case IMG_FMT_RGB24:
+    pixel_data[0] = p.r;
+    pixel_data[1] = p.g;
+    pixel_data[2] = p.b;
+    break;
+  case IMG_FMT_BGR24:
+    pixel_data[0] = p.b;
+    pixel_data[1] = p.g;
+    pixel_data[2] = p.r;
+    break;
+  case IMG_FMT_RGBA32:
+    pixel_data[0] = p.r;
+    pixel_data[1] = p.g;
+    pixel_data[2] = p.b;
+    pixel_data[3] = p.a;
+    break;
+  default:
+    fprintf(stderr, "Unsupported image format\n");
+    return -1;
+  }
+  return 0;
 }

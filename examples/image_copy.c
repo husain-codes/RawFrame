@@ -27,11 +27,12 @@ int main(int argc, char *argv[]) {
     int x = samples[i][0];
     int y = samples[i][1];
 
-    unsigned char *pixel = image->data + y * image->stride + x * 3;
-    unsigned char r = pixel[0];
-    unsigned char g = pixel[1];
-    unsigned char b = pixel[2];
-    printf("Pixel (%d,%d) -> R=%u G=%u B=%u\n", x, y, r, g, b);
+    pixel_t p;
+    if (img_get_pixel(image, x, y, &p) != 0) {
+      fprintf(stderr, "Failed to get pixel at (%d, %d)\n", x, y);
+      continue;
+    }
+    printf("Pixel (%d,%d) -> R=%u G=%u B=%u\n", x, y, p.r, p.g, p.b);
   }
 
   img_t *copy = img_copy(image);
@@ -46,11 +47,12 @@ int main(int argc, char *argv[]) {
     int x = samples[i][0];
     int y = samples[i][1];
 
-    unsigned char *pixel = copy->data + y * copy->stride + x * 3;
-    unsigned char r = pixel[0];
-    unsigned char g = pixel[1];
-    unsigned char b = pixel[2];
-    printf("COPY: Pixel (%d,%d) -> R=%u G=%u B=%u\n", x, y, r, g, b);
+    pixel_t p;
+    if (img_get_pixel(copy, x, y, &p) != 0) {
+      fprintf(stderr, "Failed to get pixel at (%d, %d) from copy\n", x, y);
+      continue;
+    }
+    printf("COPY: Pixel (%d,%d) -> R=%u G=%u B=%u\n", x, y, p.r, p.g, p.b);
   }
   if (img_save_bmp("output.bmp", copy) != 0) {
     fprintf(stderr, "Failed to save output.bmp\n");
@@ -60,6 +62,27 @@ int main(int argc, char *argv[]) {
   }
 
   printf("Image copied and saved to output.bmp\n");
+
+  printf("Modifying copy with a red block (50x50 pixels)...\n");
+  pixel_t red = {255, 0, 0, 255};
+
+  // Create a visible red block in the top-left area
+  int block_size = 50;
+  for (int y = 10; y < 10 + block_size && y < copy->height; y++) {
+    for (int x = 10; x < 10 + block_size && x < copy->width; x++) {
+      if (img_set_pixel(copy, x, y, red) != 0) {
+        fprintf(stderr, "Failed to set pixel at (%d, %d)\n", x, y);
+      }
+    }
+  }
+
+  // Save the modified copy
+  if (img_save_bmp("output_modified.bmp", copy) != 0) {
+    fprintf(stderr, "Failed to save output_modified.bmp\n");
+  } else {
+    printf("Modified image saved to output_modified.bmp\n");
+  }
+
   // Clean up resources.
   img_destroy(image);
   image = NULL;
