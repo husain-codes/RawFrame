@@ -6,6 +6,8 @@ project(RawFrame
     LANGUAGES C
 )
 
+enable_testing()
+
 # Use C99
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -23,6 +25,7 @@ include_directories(include)
 set(RAWFRAME_CORE
     src/core/img.c
     src/core/img_format.c
+    src/core/img_convert.c
 )
 
 set(RAWFRAME_IO
@@ -60,7 +63,8 @@ add_library(rawframe STATIC
     ${RAWFRAME_PROCESSING}
     ${RAWFRAME_DISPLAY}
 )
-
+add_library(unity STATIC third_party/Unity/src/unity.c)
+target_include_directories(unity PUBLIC third_party/Unity/src)
 target_include_directories(rawframe PUBLIC include)
 
 if(RAWFRAME_ENABLE_SDL)
@@ -79,3 +83,7 @@ target_link_libraries(image_copy rawframe)
 
 #add_executable(example_processing examples/example_processing.c)
 #target_link_libraries(example_processing rawframe)
+
+add_executable(test_img_convert tests/test_img_convert.c)
+target_link_libraries(test_img_convert rawframe unity)
+add_test(NAME test_img_convert COMMAND test_img_convert)

@@ -1,3 +1,4 @@
+#include <img/img_convert.h>
 #include <io/img_io.h>
 #include <stdio.h>
 
@@ -83,10 +84,21 @@ int main(int argc, char *argv[]) {
     printf("Modified image saved to output_modified.bmp\n");
   }
 
+  // Verify img toggle function
+  if (img_toggle_rgb_bgr(copy) != 0) {
+    fprintf(stderr, "Failed to toggle RGB/BGR in copy\n");
+  } else {
+    if (img_save_bmp("output_toggled.bmp", copy) != 0) {
+      fprintf(stderr, "Failed to save output_toggled.bmp\n");
+    } else {
+      printf("Toggled image saved to output_toggled.bmp\n");
+    }
+  }
+
   // Clean up resources.
   img_destroy(image);
   image = NULL;
-  // img_destroy(copy);
-  // copy = NULL;
+  img_destroy(copy);
+  copy = NULL;
   return 0;
 }
