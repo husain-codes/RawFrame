@@ -25,3 +25,7 @@ jobs:
       run: |
         cd build
         make
+    - name: Run tests
+      run: |
+        cd build
+        ./test_img_convert
