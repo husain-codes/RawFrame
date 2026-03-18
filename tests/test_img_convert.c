@@ -60,6 +60,9 @@ void test_img_toggle_rgb_bgr_success() {
     TEST_ASSERT_EQUAL_UINT8(255, out.g); // Green remains Green
     TEST_ASSERT_EQUAL_UINT8(0, out.b);   // Blue remains Blue
 
+    // Rount trip toggle back to RGB
+    TEST_ASSERT_EQUAL(0, img_toggle_rgb_bgr(img));
+    TEST_ASSERT_EQUAL(IMG_FMT_RGB24, img->format); // Format should now be RGB
     img_destroy(img);
 }
 
