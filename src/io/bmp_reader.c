@@ -4,6 +4,19 @@
 #include <stdlib.h>
 #include <string.h>
 
+static img_format_t img_format_from_bits_per_pixel_bmp(int bits_per_pixel) {
+  switch (bits_per_pixel) {
+  case 8:
+    return IMG_FMT_GRAY8;
+  case 24:
+    return IMG_FMT_BGR24; /* default to BGR24 for 24-bit bmp images */
+  case 32:
+    return IMG_FMT_RGBA32;
+  default:
+    return IMG_FMT_UNKNOWN;
+  }
+}
+
 img_t *img_load_bmp(char *path) {
   BMHEADER header;
   BMINFOHEADER info_header;
@@ -37,12 +50,6 @@ img_t *img_load_bmp(char *path) {
     return NULL;
   }
 
-  if (info_header.bits_per_pixel != 24) {
-    fprintf(stderr, "bits_per_pixel must be 24\n");
-    fclose(img_file);
-    return NULL;
-  }
-
   if (info_header.compression != 0) {
     fprintf(stderr, "Compressed BMP not supported\n");
     fclose(img_file);
@@ -57,7 +64,18 @@ img_t *img_load_bmp(char *path) {
 
   bool bottom_up = info_header.height > 0;
   int height = bottom_up ? info_header.height : -(info_header.height);
-  img_t *img = img_create(info_header.width, height, IMG_FMT_BGR24);
+
+  img_format_t format =
+      img_format_from_bits_per_pixel_bmp(info_header.bits_per_pixel);
+  if (format == IMG_FMT_UNKNOWN) {
+    fprintf(stderr, "Unsupported bits per pixel: %d\n",
+            info_header.bits_per_pixel);
+    fclose(img_file);
+    return NULL;
+  }
+
+  img_t *img = img_create(info_header.width, height, format);
+
   if (!img) {
     fprintf(stderr, "Unable to create image\n");
     return NULL;
