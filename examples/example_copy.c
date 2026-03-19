@@ -55,14 +55,14 @@ int main(int argc, char *argv[]) {
     }
     printf("COPY: Pixel (%d,%d) -> R=%u G=%u B=%u\n", x, y, p.r, p.g, p.b);
   }
-  if (img_save_bmp("output.bmp", copy) != 0) {
-    fprintf(stderr, "Failed to save output.bmp\n");
+  if (img_save_bmp("output_copy.bmp", copy) != 0) {
+    fprintf(stderr, "Failed to save output_copy.bmp\n");
     img_destroy(image);
     image = NULL;
     return -1;
   }
 
-  printf("Image copied and saved to output.bmp\n");
+  printf("Image copied and saved to output_copy.bmp\n");
 
   printf("Modifying copy with a red block (50x50 pixels)...\n");
   pixel_t red = {255, 0, 0, 255};
@@ -82,17 +82,6 @@ int main(int argc, char *argv[]) {
     fprintf(stderr, "Failed to save output_modified.bmp\n");
   } else {
     printf("Modified image saved to output_modified.bmp\n");
-  }
-
-  // Verify img toggle function
-  if (img_toggle_rgb_bgr(copy) != 0) {
-    fprintf(stderr, "Failed to toggle RGB/BGR in copy\n");
-  } else {
-    if (img_save_bmp("output_toggled.bmp", copy) != 0) {
-      fprintf(stderr, "Failed to save output_toggled.bmp\n");
-    } else {
-      printf("Toggled image saved to output_toggled.bmp\n");
-    }
   }
 
   // Clean up resources.

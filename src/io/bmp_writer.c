@@ -15,11 +15,22 @@ int initialize_bmp_header(BMHEADER *header, BMINFOHEADER *info_header,
     return -1;
   }
 
+  size_t bytes_per_pixel = img_format_bytes_per_pixel(img->format);
+  if (bytes_per_pixel == 0) {
+    fprintf(stderr, "Unsupported image format\n");
+    return -1;
+  }
   // Initialize BMP Header
   header->signature = 0x4D42;
   header->reserved1 = 0;
   header->reserved2 = 0;
-  header->data_offset = sizeof(BMHEADER) + sizeof(BMINFOHEADER);
+  if (img->format == IMG_FMT_GRAY8) {
+    header->data_offset = sizeof(BMHEADER) + sizeof(BMINFOHEADER) + 256 * 4;
+    info_header->color_used = 256;
+  } else {
+    header->data_offset = sizeof(BMHEADER) + sizeof(BMINFOHEADER);
+    info_header->color_used = 0;
+  }
 
   /* BMP rows are padded to a multiple of four bytes.  Compute the
      padded size so that we can fill in the file_size and image_size
@@ -29,7 +40,7 @@ int initialize_bmp_header(BMHEADER *header, BMINFOHEADER *info_header,
   info_header->width = img->width;
   info_header->height = img->height; /* positive -> bottom‑up */
   info_header->planes = 1;
-  info_header->bits_per_pixel = img_format_bytes_per_pixel(img->format) * 8;
+  info_header->bits_per_pixel = bytes_per_pixel * 8;
   info_header->compression = 0; /* no compression */
 
   int bytes_per_row = img->width * (info_header->bits_per_pixel / 8);
@@ -39,7 +50,6 @@ int initialize_bmp_header(BMHEADER *header, BMINFOHEADER *info_header,
   info_header->image_size = padded_row * img->height;
   info_header->x_pixels_per_m = 0;
   info_header->y_pixels_per_m = 0;
-  info_header->color_used = 0;
   info_header->imp_colors = 0;
   return 0;
 }
@@ -80,6 +90,18 @@ int img_save_bmp(const char *path, img_t *img) {
     fclose(bmp_file);
     return -1;
   }
+
+  if (img->format == IMG_FMT_GRAY8) {
+    for (int i = 0; i < 256; i++) {
+      unsigned char color[4] = {i, i, i, 0}; /* grayscale palette */
+      if (!fwrite(color, sizeof(color), 1, bmp_file)) {
+        fprintf(stderr, "Unable to write color palette\n");
+        fclose(bmp_file);
+        return -1;
+      }
+    }
+  }
+
   int dst_y = 0;
 
   int bytes_per_row = img->width * img_format_bytes_per_pixel(img->format);
