@@ -89,3 +89,7 @@ target_link_libraries(example_convert rawframe)
 add_executable(test_img_convert tests/test_img_convert.c)
 target_link_libraries(test_img_convert rawframe unity)
 add_test(NAME test_img_convert COMMAND test_img_convert)
+
+add_executable(test_io tests/test_io.c)
+target_link_libraries(test_io rawframe unity)
+add_test(NAME test_io COMMAND test_io)
