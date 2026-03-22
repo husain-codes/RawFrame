@@ -4,4 +4,6 @@
 
 int img_toggle_rgb_bgr(img_t *img);
 int img_convert_rgb_to_gray(img_t *img);
+int img_convert_rgb_to_yuv444(img_t *img);
+int img_convert_yuv444_to_rgb(img_t *img);
 #endif

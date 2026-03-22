@@ -48,12 +48,15 @@ int main(int argc, char *argv[]) {
   if (!gray_image) {
     fprintf(stderr, "Failed to load output_gray.bmp\n");
   } else {
-    printf("format: %s\n", gray_image->format == IMG_FMT_GRAY8 ? "GRAY8" : "unknown");
+    printf("format: %s\n",
+           gray_image->format == IMG_FMT_GRAY8 ? "GRAY8" : "unknown");
     pixel_t p;
     if (img_get_pixel(gray_image, 0, 0, &p) != 0) {
-      fprintf(stderr, "Failed to get pixel at (0, 0) from loaded output_gray.bmp\n");
+      fprintf(stderr,
+              "Failed to get pixel at (0, 0) from loaded output_gray.bmp\n");
     } else {
-      printf("Pixel (0,0) in loaded output_gray.bmp -> R=%u G=%u B=%u\n", p.r, p.g, p.b);
+      printf("Pixel (0,0) in loaded output_gray.bmp -> R=%u G=%u B=%u\n", p.r,
+             p.g, p.b);
     }
     printf("Successfully loaded output_gray.bmp with dimensions %d x %d\n",
            gray_image->width, gray_image->height);
