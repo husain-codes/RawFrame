@@ -31,6 +31,8 @@ set(RAWFRAME_CORE
 set(RAWFRAME_IO
     src/io/bmp_reader.c
     src/io/bmp_writer.c
+    src/io/ppm_reader.c
+    src/io/ppm_writer.c
 )
 
 set(RAWFRAME_PROCESSING
@@ -82,7 +84,8 @@ add_executable(example_copy examples/example_copy.c)
 target_link_libraries(example_copy rawframe)
 add_executable(example_convert examples/example_convert.c)
 target_link_libraries(example_convert rawframe)
-
+add_executable(example_ppm examples/example_ppm.c)
+target_link_libraries(example_ppm rawframe)
 #add_executable(example_processing examples/example_processing.c)
 #target_link_libraries(example_processing rawframe)
 
