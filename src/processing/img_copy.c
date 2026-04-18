@@ -15,6 +15,6 @@ img_t *img_copy(img_t *img) {
     return NULL;
   }
 
-  memcpy(copy->data, img->data, img->height * img->stride);
+  memcpy(copy->planes[0], img->planes[0], img->height * img->stride[0]);
   return copy;
 }

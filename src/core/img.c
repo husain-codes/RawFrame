@@ -28,15 +28,22 @@ img_t *img_create(uint32_t width, uint32_t height, img_format_t format) {
   img->width = width;
   img->height = height;
   img->format = format;
-  img->stride =
+  img->stride[0] =
       width * bpp; // number of bytes in a row of pixel data, excluding padding
-  size_t buffer_size = img->stride * height;
-  img->data = malloc(buffer_size);
-  if (!img->data) {
+  size_t buffer_size = img->stride[0] * height;
+  img->planes[0] = malloc(buffer_size);
+
+  // Initialize other planes to NULL and strides to 0 for safety
+  img->planes[1] = NULL;
+  img->planes[2] = NULL;
+  img->stride[1] = 0;
+  img->stride[2] = 0;
+
+  if (!img->planes[0]) {
     free(img);
     return NULL;
   }
-  memset(img->data, 0, buffer_size); // set 0 as initial value
+  memset(img->planes[0], 0, buffer_size); // set 0 as initial value
   return img;
 }
 
@@ -44,7 +51,7 @@ img_t *img_create(uint32_t width, uint32_t height, img_format_t format) {
 void img_destroy(img_t *img) {
   if (!img)
     return;
-  free(img->data);
+  free(img->planes[0]);
   free(img);
 }
 
@@ -62,7 +69,7 @@ int img_get_pixel(img_t *img, int x, int y, pixel_t *out) {
     fprintf(stderr, "Unsupported image format\n");
     return -1;
   }
-  uint8_t *row = img->data + y * img->stride;
+  uint8_t *row = img->planes[0] + y * img->stride[0];
   uint8_t *pixel_data = row + x * bpp;
   switch (img->format) {
   case IMG_FMT_GRAY8:
@@ -108,7 +115,7 @@ int img_set_pixel(img_t *img, int x, int y, pixel_t p) {
     fprintf(stderr, "Unsupported image format\n");
     return -1;
   }
-  uint8_t *row = img->data + y * img->stride;
+  uint8_t *row = img->planes[0] + y * img->stride[0];
   uint8_t *pixel_data = row + x * bpp;
   switch (img->format) {
   case IMG_FMT_GRAY8:

@@ -41,6 +41,19 @@ int main(char argc, char *argv[]) {
     return -1;
   }
 
+  // print colors of first 10 pixels
+  for (int i = 0; i < 10 && i < copy->width * copy->height; i++) {
+    int x = i % copy->width;
+    int y = i / copy->width;
+    pixel_t p;
+    if (img_get_pixel(copy, x, y, &p) == 0) {
+      printf("Pixel (%d, %d): R=%d, G=%d, B=%d, A=%d\n", x, y, p.r, p.g, p.b,
+             p.a);
+    } else {
+      fprintf(stderr, "Failed to get pixel at (%d, %d)\n", x, y);
+    }
+  }
+
   // converting ppm to bmp
   if (img_save_bmp("output_from_ppm.bmp", copy) != 0) {
     fprintf(stderr, "Failed to save bmp file\n");

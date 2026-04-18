@@ -67,7 +67,7 @@ img_t *img_load_ppm(char *path) {
   uint8_t *dst_row;
   int bytes_per_row = width * img_format_bytes_per_pixel(IMG_FMT_RGB24);
   for (int y = 0; y < height; y++) {
-    dst_row = ppm_img->data + y * ppm_img->stride;
+    dst_row = ppm_img->planes[0] + y * ppm_img->stride[0];
     if (fread(dst_row, 1, bytes_per_row, ppm_file) != bytes_per_row) {
       fprintf(stderr, "Unable to copy raw pixel values at height : %d\n", y);
       fclose(ppm_file);

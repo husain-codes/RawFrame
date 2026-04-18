@@ -95,7 +95,7 @@ void test_img_convert_rgb_to_gray_success() {
     // Convert RGB to Grayscale
     TEST_ASSERT_EQUAL(0, img_convert_rgb_to_gray(img));
     TEST_ASSERT_EQUAL(IMG_FMT_GRAY8, img->format); // Format should now be Grayscale
-    TEST_ASSERT_EQUAL(img->width, img->stride); // Stride should now equal width for grayscale
+    TEST_ASSERT_EQUAL(img->width, img->stride[0]); // Stride should now equal width for grayscale
 
     // Verify the pixel values are correctly converted to grayscale
     pixel_t out;
@@ -168,7 +168,7 @@ void test_img_convert_rgb_to_yuv444_round_trip_success() {
     int m=0;
     for(int y=0; y<2; y++){
         for(int x=0; x<2; x++){
-            pixel = img->data + y * img->stride + x * 3; // Access raw data for YUV values
+            pixel = img->planes[0] + y * img->stride[0] + x * 3; // Access raw data for YUV values
             Y = (uint8_t)(0.299 * p[m].r + 0.587 * p[m].g + 0.114 * p[m].b);
             U = (uint8_t)(-0.169 * p[m].r - 0.331 * p[m].g + 0.5 * p[m].b +
                             128);

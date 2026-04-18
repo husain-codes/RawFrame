@@ -55,7 +55,7 @@ int img_save_ppm(const char *path, img_t *img) {
   size_t bytes_per_row = img->width * img_format_bytes_per_pixel(IMG_FMT_RGB24);
   uint8_t *src_row;
   for (int y = 0; y < img->height; y++) {
-    src_row = img->data + y * img->stride;
+    src_row = img->planes[0] + y * img->stride[0];
     if (fwrite(src_row, 1, bytes_per_row, ppm_file) != bytes_per_row) {
       fprintf(stderr, "Unable to write data values\n");
       fclose(ppm_file);

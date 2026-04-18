@@ -25,7 +25,7 @@ int img_toggle_rgb_bgr(img_t *img) {
   uint8_t *row_offset;
   uint8_t temp = 0;
   for (int y = 0; y < img->height; y++) {
-    row_offset = img->data + y * img->stride;
+    row_offset = img->planes[0] + y * img->stride[0];
     for (int x = 0; x < img->width; x++) {
       pixel = row_offset + x * 3;
       temp = pixel[0];     // getting red value into temp var
@@ -81,7 +81,7 @@ int img_convert_rgb_to_gray(img_t *img) {
                             // new grayscale image
   size_t bpp = img_format_bytes_per_pixel(img->format);
   for (int y = 0; y < img->height; y++) {
-    row_offset = img->data + y * img->stride;
+    row_offset = img->planes[0] + y * img->stride[0];
     row_offset_gray = new_data + y * img->width;
     for (int x = 0; x < img->width; x++) {
       p = row_offset + x * bpp;
@@ -90,10 +90,10 @@ int img_convert_rgb_to_gray(img_t *img) {
     }
   }
 
-  free(img->data);
-  img->data = new_data;
+  free(img->planes[0]);
+  img->planes[0] = new_data;
   img->format = IMG_FMT_GRAY8;
-  img->stride = img->width;
+  img->stride[0] = img->width;
   return 0;
 }
 
@@ -123,7 +123,7 @@ int img_convert_rgb_to_yuv444(img_t *img) {
   uint8_t Y, U, V;
   size_t bpp = img_format_bytes_per_pixel(img->format);
   for (int y = 0; y < img->height; y++) {
-    row_offset = img->data + y * img->stride;
+    row_offset = img->planes[0] + y * img->stride[0];
     for (int x = 0; x < img->width; x++) {
       pixel = row_offset + x * bpp;
       Y = (uint8_t)(0.299 * pixel[0] + 0.587 * pixel[1] + 0.114 * pixel[2]);
@@ -164,7 +164,7 @@ int img_convert_yuv444_to_rgb(img_t *img) {
   double r_val, g_val, b_val;
   size_t bpp = img_format_bytes_per_pixel(img->format);
   for (int y = 0; y < img->height; y++) {
-    row_offset = img->data + y * img->stride;
+    row_offset = img->planes[0] + y * img->stride[0];
     for (int x = 0; x < img->width; x++) {
       pixel = row_offset + x * bpp;
       r_val = pixel[0] + 1.402 * (pixel[2] - 128); // Y + 1.402 * (V - 128)

@@ -78,15 +78,15 @@ void test_img_save_bmp_bgr_roundtrip() {
   TEST_ASSERT_EQUAL(2, image->width);
   TEST_ASSERT_EQUAL(2, image->height);
   TEST_ASSERT_EQUAL(IMG_FMT_BGR24, image->format);
-  TEST_ASSERT_NOT_NULL(image->data);
-  TEST_ASSERT_EQUAL(6, image->stride); // 2 pixels * 3 bytes per pixel for BGR24
+  TEST_ASSERT_NOT_NULL(image->planes[0]);
+  TEST_ASSERT_EQUAL(6, image->stride[0]); // 2 pixels * 3 bytes per pixel for BGR24
 
   img_t *loaded_image = img_load_bmp("test_output.bmp");
   TEST_ASSERT_NOT_NULL(loaded_image);
   TEST_ASSERT_EQUAL(2, loaded_image->width);
   TEST_ASSERT_EQUAL(2, loaded_image->height);
   TEST_ASSERT_EQUAL(IMG_FMT_BGR24, loaded_image->format);
-  TEST_ASSERT_NOT_NULL(loaded_image->data);
+  TEST_ASSERT_NOT_NULL(loaded_image->planes[0]);
 
   pixel_t out;
   img_get_pixel(loaded_image, 0, 0, &out);

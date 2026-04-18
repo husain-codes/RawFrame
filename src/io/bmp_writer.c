@@ -112,7 +112,7 @@ int img_save_bmp(const char *path, img_t *img) {
   int height = abs(info_header.height);
   for (int y = 0; y < height; y++) {
     dst_y = height - 1 - y;
-    unsigned char *dst_row = img->data + dst_y * img->stride;
+    unsigned char *dst_row = img->planes[0] + dst_y * img->stride[0];
     if (!fwrite(dst_row, bytes_per_row, 1, bmp_file)) {
       fprintf(stderr, "Unable to write data values\n");
       fclose(bmp_file);

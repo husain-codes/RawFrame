@@ -9,9 +9,10 @@
 typedef struct {
   uint32_t width;
   uint32_t height;
-  size_t stride; // number of bytes in a row of pixel data, excluding padding
+  size_t stride[3]; // number of bytes in a row of pixel data, excluding padding
   img_format_t format;
-  uint8_t *data;
+  uint8_t num_planes;
+  uint8_t *planes[3];
 } img_t;
 
 /*Pixel structure */

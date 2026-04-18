@@ -88,7 +88,7 @@ img_t *img_load_bmp(char *path) {
 
   for (int pixel_y = 0; pixel_y < height; pixel_y++) {
     dst_y = bottom_up ? height - 1 - pixel_y : pixel_y;
-    unsigned char *dst_row = img->data + dst_y * img->stride;
+    unsigned char *dst_row = img->planes[0] + dst_y * img->stride[0];
     if (fread(dst_row, 1, bytes_per_row, img_file) != bytes_per_row) {
       fprintf(stderr, "Unable to copy raw pixel values at height : %d\n",
               pixel_y);
