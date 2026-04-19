@@ -96,3 +96,7 @@ add_test(NAME test_img_convert COMMAND test_img_convert)
 add_executable(test_io tests/test_io.c)
 target_link_libraries(test_io rawframe unity)
 add_test(NAME test_io COMMAND test_io)
+
+add_executable(test_nv12 tests/test_nv12.c)
+target_link_libraries(test_nv12 rawframe unity)
+add_test(NAME test_nv12 COMMAND test_nv12)

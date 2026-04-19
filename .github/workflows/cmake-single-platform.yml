@@ -30,3 +30,4 @@ jobs:
         cd build
         ./test_img_convert
         ./test_io
+        ./test_nv12
