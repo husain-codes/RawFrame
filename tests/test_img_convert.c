@@ -211,6 +211,39 @@ void test_img_convert_rgb_to_yuv444_round_trip_success() {
   img_destroy(img);
 }
 
+void test_img_convert_rgb_to_nv12_null() {
+  TEST_ASSERT_NULL(img_convert_rgb_to_nv12(NULL));
+}
+
+void test_img_convert_rgb_to_nv12() {
+  img_t *img = img_create(2, 2, IMG_FMT_RGB24);
+  TEST_ASSERT_NOT_NULL(img);
+  img_set_pixel(img, 0, 0, (pixel_t){255, 0, 0, 255}); // Red
+  img_set_pixel(img, 1, 0, (pixel_t){0, 255, 0, 255}); // Green
+  img_set_pixel(img, 0, 1, (pixel_t){0, 0, 255, 255}); // Blue
+  img_set_pixel(img, 1, 1, (pixel_t){255, 255, 0, 255}); // Yellow
+
+  img_t *nv12_img = img_convert_rgb_to_nv12(img);
+  TEST_ASSERT_NOT_NULL(nv12_img);
+  TEST_ASSERT_EQUAL(IMG_FMT_NV12, nv12_img->format);
+  TEST_ASSERT_EQUAL(img->width, nv12_img->width);
+  TEST_ASSERT_EQUAL(img->height, nv12_img->height);
+
+  // verify Y plane values
+  uint8_t *y_plane = nv12_img->planes[0];
+  TEST_ASSERT_INT_WITHIN(2, 76, y_plane[0]); // Y value for Red
+  TEST_ASSERT_INT_WITHIN(2, 150, y_plane[1]); // Y value for Green
+  TEST_ASSERT_INT_WITHIN(2, 29, y_plane[2]); // Y value for Blue
+  TEST_ASSERT_INT_WITHIN(2, 225, y_plane[3]); // Y value for Yellow
+
+  // verify UV plane values (one UV pair per 2x2 block)
+  uint8_t *uv_plane = nv12_img->planes[1];
+  TEST_ASSERT_INT_WITHIN(2, 96, uv_plane[0]); // averaged U for the 2x2 block
+  TEST_ASSERT_INT_WITHIN(2, 133, uv_plane[1]); // averaged V for the 2x2 block
+  img_destroy(nv12_img);
+  img_destroy(img);
+}
+
 int main() {
   UNITY_BEGIN();
   RUN_TEST(test_img_toggle_rgb_bgr_null);
@@ -227,5 +260,8 @@ int main() {
   RUN_TEST(test_img_convert_yuv444_to_rgb_wrong_format);
 
   RUN_TEST(test_img_convert_rgb_to_yuv444_round_trip_success);
+  RUN_TEST(test_img_convert_rgb_to_nv12_null);
+  RUN_TEST(test_img_convert_rgb_to_nv12);
+
   return UNITY_END();
 }

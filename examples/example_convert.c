@@ -64,6 +64,23 @@ int main(int argc, char *argv[]) {
     gray_image = NULL;
   }
 
+  // verify img convert rgb to nv12 function
+  if (img_toggle_rgb_bgr(image) != 0) {
+    fprintf(stderr, "Failed to toggle RGB/BGR in original image\n");
+  } else {
+    printf("Toggled original image from BGR to RGB format\n");
+  }
+
+  img_t *nv12_image = img_convert_rgb_to_nv12(image);
+  if (!nv12_image) {
+    fprintf(stderr, "Failed to convert RGB to NV12\n");
+  } else {
+    printf("Successfully converted RGB to NV12 with dimensions %d x %d\n",
+           nv12_image->width, nv12_image->height);
+    img_destroy(nv12_image);
+    nv12_image = NULL;
+  }
+
   img_destroy(copy);
   copy = NULL;
   img_destroy(image);

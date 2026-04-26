@@ -184,3 +184,80 @@ int img_convert_yuv444_to_rgb(img_t *img) {
   img->format = IMG_FMT_RGB24;
   return 0;
 }
+/*
+ * Convert RGB image to NV12
+ * This function converts an RGB image to NV12 format.
+ * Parameters:
+ *   img: A pointer to the input RGB image
+ * Returns:
+ *   A pointer to the new NV12 image on success, or NULL on failure
+ */
+img_t *img_convert_rgb_to_nv12(const img_t *img) {
+  if (!img) {
+    fprintf(stderr, "Input image is null\n");
+    return NULL;
+  }
+
+  if (img->format != IMG_FMT_RGB24) {
+    fprintf(stderr, "Input image format is %d, expected RGB24\n", img->format);
+    return NULL;
+  }
+
+  if (img->width % 2 != 0 || img->height % 2 != 0) {
+    fprintf(stderr, "Input image dimensions must be even for NV12 format\n");
+    return NULL;
+  }
+
+  img_t *img_nv12 = img_create(img->width, img->height, IMG_FMT_NV12);
+  if (!img_nv12) {
+    fprintf(stderr, "Failed to create NV12 image\n");
+    return NULL;
+  }
+
+  int bpp = img_format_bytes_per_pixel(img->format);
+  uint8_t *row_offset_rgb;
+  uint8_t *row_offset_y;
+  uint8_t *row_offset_uv;
+  uint8_t *pixel_rgb;
+  uint8_t *pixel_y;
+  uint8_t *pixel_uv;
+
+  for (int y = 0; y < img->height; y++) {
+    row_offset_rgb = img->planes[0] + y * img->stride[0];
+    row_offset_y = img_nv12->planes[0] + y * img_nv12->stride[0];
+    for (int x = 0; x < img->width; x++) {
+      pixel_rgb = row_offset_rgb + x * bpp;
+      pixel_y = row_offset_y + x; // Y plane has 1 byte per pixel
+      pixel_y[0] = (uint8_t)(0.299 * pixel_rgb[0] + 0.587 * pixel_rgb[1] +
+                             0.114 * pixel_rgb[2]);
+    }
+  }
+
+  for (int y = 0; y < img->height; y += 2) {
+    row_offset_rgb = img->planes[0] + y * img->stride[0];
+    row_offset_uv = img_nv12->planes[1] + (y / 2) * img_nv12->stride[1];
+    for (int x = 0; x < img->width; x += 2) {
+      pixel_uv = row_offset_uv + (x / 2) * 2;
+      uint8_t *pixel_tl = row_offset_rgb + x * bpp;
+      uint8_t *pixel_tr = row_offset_rgb + (x + 1) * bpp;
+      uint8_t *pixel_bl = row_offset_rgb + img->stride[0] + x * bpp;
+      uint8_t *pixel_br = row_offset_rgb + img->stride[0] + (x + 1) * bpp;
+
+      uint16_t r_sum = pixel_tl[0] + pixel_tr[0] + pixel_bl[0] + pixel_br[0];
+      uint16_t g_sum = pixel_tl[1] + pixel_tr[1] + pixel_bl[1] + pixel_br[1];
+      uint16_t b_sum = pixel_tl[2] + pixel_tr[2] + pixel_bl[2] + pixel_br[2];
+
+      uint8_t r_avg = (uint8_t)(r_sum / 4);
+      uint8_t g_avg = (uint8_t)(g_sum / 4);
+      uint8_t b_avg = (uint8_t)(b_sum / 4);
+
+      // Average the U and V values for the 2x2 block of pixels
+      uint8_t U = (uint8_t)(-0.169 * r_avg - 0.331 * g_avg + 0.5 * b_avg + 128);
+      uint8_t V = (uint8_t)(0.5 * r_avg - 0.419 * g_avg - 0.081 * b_avg + 128);
+
+      pixel_uv[0] = U;
+      pixel_uv[1] = V;
+    }
+  }
+  return img_nv12;
+}
