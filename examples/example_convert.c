@@ -81,6 +81,22 @@ int main(int argc, char *argv[]) {
     nv12_image = NULL;
   }
 
+  //verify round trip conversion from RGB to NV12 and back to RGB
+  img_t *nv12_image_round_trip = img_convert_rgb_to_nv12(image);
+  img_t *rgb_image_round_trip = img_convert_nv12_to_rgb(nv12_image_round_trip);
+  if (!rgb_image_round_trip) {
+    fprintf(stderr, "Failed to convert NV12 back to RGB\n");
+  } else {
+    img_toggle_rgb_bgr(rgb_image_round_trip); // Toggle back to BGR for correct color display in BMP
+    img_save_bmp("output_nv12_to_rgb.bmp", rgb_image_round_trip);
+    printf("Successfully converted NV12 back to RGB with dimensions %d x %d\n",
+           rgb_image_round_trip->width, rgb_image_round_trip->height);
+    img_destroy(rgb_image_round_trip);
+    rgb_image_round_trip = NULL;
+  }
+
+  img_destroy(nv12_image_round_trip);
+  nv12_image_round_trip = NULL;
   img_destroy(copy);
   copy = NULL;
   img_destroy(image);

@@ -244,6 +244,58 @@ void test_img_convert_rgb_to_nv12() {
   img_destroy(img);
 }
 
+void test_img_convert_nv12_to_rgb_null() {
+  TEST_ASSERT_NULL(img_convert_nv12_to_rgb(NULL));
+}
+
+void test_img_convert_nv12_to_rgb() {
+  img_t *nv12_img = img_create(2, 2, IMG_FMT_NV12);
+  TEST_ASSERT_NOT_NULL(nv12_img);
+
+  // Manually set Y plane values
+  uint8_t *y_plane = nv12_img->planes[0];
+  y_plane[0] = 76; // Y value for Red
+  y_plane[1] = 150; // Y value for Green
+  y_plane[2] = 29; // Y value for Blue
+  y_plane[3] = 225; // Y value for Yellow
+
+  // Manually set UV plane values (one UV pair for the entire 2x2 block)
+  uint8_t *uv_plane = nv12_img->planes[1];
+  uv_plane[0] = 96; // averaged U for the block
+  uv_plane[1] = 133; // averaged V for the block
+
+  img_t *rgb_img = img_convert_nv12_to_rgb(nv12_img);
+  TEST_ASSERT_NOT_NULL(rgb_img);
+  TEST_ASSERT_EQUAL(IMG_FMT_RGB24, rgb_img->format);
+  TEST_ASSERT_EQUAL(nv12_img->width, rgb_img->width);
+  TEST_ASSERT_EQUAL(nv12_img->height, rgb_img->height);
+
+  // verify RGB values (should be close to original Red, Green, Blue, Yellow)
+  pixel_t out;
+  img_get_pixel(rgb_img, 0, 0, &out);
+  TEST_ASSERT_INT_WITHIN(5, 83, out.r); // Red remains Red
+  TEST_ASSERT_INT_WITHIN(5, 83, out.g);   // Green remains Green
+  TEST_ASSERT_INT_WITHIN(5, 19, out.b);   // Blue remains Blue
+
+  img_get_pixel(rgb_img, 1, 0, &out);
+  TEST_ASSERT_INT_WITHIN(5, 157, out.r);   // Red remains Red
+  TEST_ASSERT_INT_WITHIN(5, 157, out.g); // Green remains Green
+  TEST_ASSERT_INT_WITHIN(5, 94, out.b);   // Blue remains Blue
+
+  img_get_pixel(rgb_img, 0, 1, &out);
+  TEST_ASSERT_INT_WITHIN(5, 36, out.r);   // Red remains Red
+  TEST_ASSERT_INT_WITHIN(5, 36, out.g);   // Green remains Green
+  TEST_ASSERT_INT_WITHIN(5, 0, out.b); // Blue remains Blue
+
+  img_get_pixel(rgb_img, 1, 1, &out);
+  TEST_ASSERT_INT_WITHIN(5, 232, out.r); // Red remains Red
+  TEST_ASSERT_INT_WITHIN(5, 232, out.g); // Green remains Green
+  TEST_ASSERT_INT_WITHIN(5, 169, out.b);   // Blue remains Blue
+
+  img_destroy(rgb_img);
+  img_destroy(nv12_img);
+}
+
 int main() {
   UNITY_BEGIN();
   RUN_TEST(test_img_toggle_rgb_bgr_null);
@@ -262,6 +314,8 @@ int main() {
   RUN_TEST(test_img_convert_rgb_to_yuv444_round_trip_success);
   RUN_TEST(test_img_convert_rgb_to_nv12_null);
   RUN_TEST(test_img_convert_rgb_to_nv12);
+  RUN_TEST(test_img_convert_nv12_to_rgb_null);
+  RUN_TEST(test_img_convert_nv12_to_rgb);
 
   return UNITY_END();
 }
