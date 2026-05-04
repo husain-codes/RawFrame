@@ -16,18 +16,10 @@ jobs:
       with:
         submodules: recursive
     - name: Configure CMake
-      run: |
-        mkdir build
-        cd build
-        cmake ..
+      run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 
     - name: Build
-      run: |
-        cd build
-        make
+      run: cmake --build build --config Release
+
     - name: Run tests
-      run: |
-        cd build
-        ./test_img_convert
-        ./test_io
-        ./test_nv12
+      run: ctest --test-dir build --output-on-failure

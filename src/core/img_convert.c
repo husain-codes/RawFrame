@@ -261,3 +261,60 @@ img_t *img_convert_rgb_to_nv12(const img_t *img) {
   }
   return img_nv12;
 }
+
+/* Convert NV12 image to RGB
+ * This function converts an NV12 image back to RGB format.
+ * Parameters:
+ *   img: A pointer to the input NV12 image
+ * Returns:
+ *   A pointer to the new RGB image on success, or NULL on failure
+ */
+img_t *img_convert_nv12_to_rgb(const img_t *img) {
+  if (!img) {
+    fprintf(stderr, "Input image is null\n");
+    return NULL;
+  }
+  if (img->format != IMG_FMT_NV12) {
+    fprintf(stderr, "Input image format is %d, expected NV12\n", img->format);
+    return NULL;
+  }
+  img_t *img_rgb = img_create(img->width, img->height, IMG_FMT_RGB24);
+  if (!img_rgb) {
+    fprintf(stderr, "Failed to create RGB image\n");
+    return NULL;
+  }
+
+  uint8_t *row_offset_y;
+  uint8_t *row_offset_uv;
+  uint8_t *row_offset_rgb;
+  int bpp = img_format_bytes_per_pixel(img_rgb->format);
+  for (int y = 0; y < img->height; y++)
+  {
+    row_offset_y = img->planes[0] + y * img->stride[0];
+    row_offset_uv = img->planes[1] + (y / 2) * img->stride[1];
+    row_offset_rgb = img_rgb->planes[0] + y * img_rgb->stride[0];
+    for (int x = 0; x < img->width; x++)
+    {
+      uint8_t *Y = row_offset_y + x;
+
+      uint8_t *U = row_offset_uv + (x / 2) * 2;
+      uint8_t *V = row_offset_uv + (x / 2) * 2 + 1;
+
+      double r_val = *Y + 1.402 * (*V - 128);
+      double g_val = *Y - 0.344 * (*U - 128) - 0.714 * (*V - 128);
+      double b_val = *Y + 1.772 * (*U - 128);
+
+      uint8_t *pixel = row_offset_rgb + x * bpp;
+
+      uint8_t R = r_val < 0 ? 0 : (r_val > 255 ? 255 : (uint8_t)r_val);
+      uint8_t G = g_val < 0 ? 0 : (g_val > 255 ? 255 : (uint8_t)g_val);
+      uint8_t B = b_val < 0 ? 0 : (b_val > 255 ? 255 : (uint8_t)b_val);
+
+      pixel[0] = R;
+      pixel[1] = G;
+      pixel[2] = B;
+
+    }
+  }
+  return img_rgb;
+}
