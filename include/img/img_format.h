@@ -12,7 +12,8 @@ typedef enum {
   IMG_FMT_BGR24,
   IMG_FMT_RGBA32,
   IMG_FMT_YUV444,
-  IMG_FMT_NV12
+  IMG_FMT_NV12,
+  IMG_FMT_YUV420P
 } img_format_t;
 
 size_t img_format_bytes_per_pixel(img_format_t format);

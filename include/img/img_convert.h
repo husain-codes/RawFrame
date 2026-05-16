@@ -15,4 +15,6 @@ int img_convert_rgb_to_yuv444(
 int img_convert_yuv444_to_rgb(img_t *img); // inplace conversion
 img_t *img_convert_rgb_to_nv12(const img_t *img);
 img_t *img_convert_nv12_to_rgb(const img_t *img);
+img_t *img_convert_rgb_to_yuv420p(const img_t *img);
+img_t *img_convert_yuv420p_to_rgb(const img_t *img);
 #endif

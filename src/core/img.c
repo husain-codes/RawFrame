@@ -51,6 +51,62 @@ static img_t *img_create_nv12(uint32_t width, uint32_t height) {
   return img;
 }
 
+/*
+* Function to create a yuv420p image of width x height.
+ * return NULL on failure.
+ * return pointer to img_t on success.
+ */
+static img_t *img_create_yuv420p(uint32_t width, uint32_t height) {
+  if (width > SIZE_MAX || height > SIZE_MAX)
+    return NULL;
+
+  img_t *img = (img_t *)malloc(sizeof(img_t));
+  if (!img)
+    return NULL;
+  img->width = width;
+  img->height = height;
+  img->num_planes = 3; // YUV420P has 3 planes;
+  img->format = IMG_FMT_YUV420P;
+  img->stride[0] = width;
+  img->stride[1] = width / 2;
+  img->stride[2] = width / 2; // since YUV420P has 3 planes.
+
+  size_t buffer_size_Y_plane = width * height; // for Y plane.
+
+  // plane 0 will act as Y plane
+  img->planes[0] = malloc(buffer_size_Y_plane);
+  if (!img->planes[0]) {
+    free(img);
+    return NULL;
+  }
+
+  // plane 1 will act as U plane
+  size_t buffer_size_u_plane =
+      buffer_size_Y_plane / 4; // since U plane is a quarter of Y plane.
+  img->planes[1] = malloc(buffer_size_u_plane);
+  if (!img->planes[1]) {
+    free(img->planes[0]);
+    free(img);
+    return NULL;
+  }
+
+  // plane 2 will act as V plane
+  size_t buffer_size_v_plane =
+      buffer_size_Y_plane / 4; // since V plane is a quarter of Y plane.
+  img->planes[2] = malloc(buffer_size_v_plane);
+  if (!img->planes[2]) {
+    free(img->planes[0]);
+    free(img->planes[1]);
+    free(img);
+    return NULL;
+  }
+
+  memset(img->planes[0], 0, buffer_size_Y_plane);  // set 0 as initial value
+  memset(img->planes[1], 0, buffer_size_u_plane); // set 0 as initial value
+  memset(img->planes[2], 0, buffer_size_v_plane); // set 0 as initial value
+  return img;
+}
+
 /* Function to create an image of width x height.
  * return NULL on failure.
  * return pointer to img_t on success.
@@ -59,16 +115,31 @@ img_t *img_create(uint32_t width, uint32_t height, img_format_t format) {
   if (!width || !height)
     return NULL;
   bool is_planar = img_format_is_planar(format);
+
   if (is_planar) {
-    img_t *img_nv12 = img_create_nv12(width, height);
-    if (!img_nv12) {
-      fprintf(stderr, "Unable to create NV12 image\n");
+    switch (format) {
+    case IMG_FMT_NV12:
+      img_t *img_nv12 = img_create_nv12(width, height);
+      if (!img_nv12) {
+        fprintf(stderr, "Failed to create NV12 image\n");
+        return NULL;
+      }
+      return img_nv12;
+    case IMG_FMT_YUV420P:
+      img_t *img_yuv420p = img_create_yuv420p(width, height);
+      if (!img_yuv420p) {
+        fprintf(stderr, "Failed to create YUV420P image\n");
+        return NULL;
+      }
+      return img_yuv420p;
+      break;
+    default:
+      fprintf(stderr, "Unsupported planar format\n");
       return NULL;
     }
-    return img_nv12;
   }
-  size_t bpp = img_format_bytes_per_pixel(format);
 
+  size_t bpp = img_format_bytes_per_pixel(format);
   // Important checks.
   if (bpp == 0)
     return NULL;
@@ -78,6 +149,7 @@ img_t *img_create(uint32_t width, uint32_t height, img_format_t format) {
     return NULL;
 
   img_t *img = (img_t *)malloc(sizeof(img_t));
+  // printf("Allocated memory for img_t structure at %p\n", (void *)img);
   if (!img)
     return NULL;
 
@@ -89,7 +161,7 @@ img_t *img_create(uint32_t width, uint32_t height, img_format_t format) {
       width * bpp; // number of bytes in a row of pixel data, excluding padding
   size_t buffer_size = img->stride[0] * height;
   img->planes[0] = malloc(buffer_size);
-
+  // printf("Allocated memory for pixel data at %p\n", (void *)img->planes[0]);
   // Initialize other planes to NULL and strides to 0 for safety
   img->planes[1] = NULL;
   img->planes[2] = NULL;

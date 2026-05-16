@@ -24,6 +24,7 @@ size_t img_format_bytes_per_pixel(img_format_t format) {
 bool img_format_is_planar(img_format_t format) {
   switch (format) {
   case IMG_FMT_NV12:
+  case IMG_FMT_YUV420P:
     return true;
   default:
     return false;
