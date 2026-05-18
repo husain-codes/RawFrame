@@ -40,6 +40,12 @@ uint32_t img_format_plane_height(img_format_t format, uint32_t height,
       return height / 2; // UV plane has half the height of Y plane
     }
   }
+
+  if (format == IMG_FMT_YUV420P) {
+    if (plane_index == 0) return height;
+    else return height / 2; // U and V planes are half height
+  }
+
   return height; // For non-planar formats, all planes have the same height as
                  // the image
 }
