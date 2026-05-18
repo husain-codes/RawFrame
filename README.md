@@ -1,7 +1,7 @@
 # RawFrame
 
 ![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)
-![CI](https://github.com/husain-codes/RawFrame/actions/workflows/build.yml/badge.svg)
+![CI](https://github.com/husain-codes/RawFrame/actions/workflows/cmake-single-platform.yml/badge.svg)
 
 RawFrame is a lightweight, modular image processing library written in pure C.
 
