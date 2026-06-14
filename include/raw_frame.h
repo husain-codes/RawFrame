@@ -6,3 +6,4 @@
 #include <img/img_processing.h>
 #include <img/img_types.h>
 #include <img/img_convert.h>
+#include <img/img_processing.h>

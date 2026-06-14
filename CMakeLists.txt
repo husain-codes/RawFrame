@@ -26,6 +26,7 @@ set(RAWFRAME_CORE
     src/core/img.c
     src/core/img_format.c
     src/core/img_convert.c
+    src/core/img_pipeline.c
 )
 
 set(RAWFRAME_IO
@@ -86,6 +87,8 @@ add_executable(example_convert examples/example_convert.c)
 target_link_libraries(example_convert rawframe)
 add_executable(example_ppm examples/example_ppm.c)
 target_link_libraries(example_ppm rawframe)
+add_executable(example_blur examples/example_blur.c)
+target_link_libraries(example_blur rawframe)
 #add_executable(example_processing examples/example_processing.c)
 #target_link_libraries(example_processing rawframe)
 
@@ -100,3 +103,7 @@ add_test(NAME test_io COMMAND test_io)
 add_executable(test_nv12 tests/test_nv12.c)
 target_link_libraries(test_nv12 rawframe unity)
 add_test(NAME test_nv12 COMMAND test_nv12)
+
+add_executable(test_blur tests/test_blur.c)
+target_link_libraries(test_blur rawframe unity)
+add_test(NAME test_blur COMMAND test_blur)
