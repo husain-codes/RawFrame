@@ -5,27 +5,27 @@ This diagram illustrates the control and data planes from the bare-metal hardwar
 ```mermaid
 graph TD
     subgraph Hardware["Hardware Layer (Raspberry Pi & Sensor)"]
-        Sensor[Camera Sensor\ne.g., IMX219]
-        MIPI((MIPI CSI-2\nData Lanes))
-        I2C_Bus((I2C Bus\nControl))
+        Sensor[Camera Sensor<br>e.g., IMX219]
+        MIPI((MIPI CSI-2<br>Data Lanes))
+        I2C_Bus((I2C Bus<br>Control))
     end
 
     subgraph Kernel["Linux Kernel Space"]
-        I2C_Driver[Sensor Driver\n/dev/v4l-subdev0]
+        I2C_Driver[Sensor Driver<br>/dev/v4l-subdev0]
         CSI_RX[Unicam CSI-2 Receiver]
-        V4L2[V4L2 Framework\n/dev/video0]
+        V4L2[V4L2 Framework<br>/dev/video0]
         DMA_Mem[(CMA / DMA Memory)]
     end
 
     subgraph Userspace["Userspace (RawFrame & C++ App)"]
-        Capture[Capture Thread\nV4L2 ioctls & poll]
-        ISP[RawFrame C Library\nISP Pipeline]
-        App[C++ Render Engine\nState & Concurrency]
-        GPU[OpenGL / EGL\nTexture Mapping]
+        Capture[Capture Thread<br>V4L2 ioctls & poll]
+        ISP[RawFrame C Library<br>ISP Pipeline]
+        App[C++ Render Engine<br>State & Concurrency]
+        GPU[OpenGL / EGL<br>Texture Mapping]
     end
 
     %% Control Flow (Dotted lines)
-    App -.->|V4L2 Controls\n(Exposure, Gain)| V4L2
+    App -.->|V4L2 Controls - Exposure, Gain| V4L2
     V4L2 -.-> I2C_Driver
     I2C_Driver -.-> I2C_Bus
     I2C_Bus -.-> Sensor
