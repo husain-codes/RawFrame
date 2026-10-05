@@ -90,6 +90,8 @@ add_executable(example_ppm examples/example_ppm.c)
 target_link_libraries(example_ppm rawframe)
 add_executable(example_blur examples/example_blur.c)
 target_link_libraries(example_blur rawframe)
+add_executable(example_capture examples/example_capture.c)
+target_link_libraries(example_capture rawframe)
 #add_executable(example_processing examples/example_processing.c)
 #target_link_libraries(example_processing rawframe)
 
