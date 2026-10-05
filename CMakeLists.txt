@@ -35,6 +35,7 @@ set(RAWFRAME_IO
     src/io/bmp_writer.c
     src/io/ppm_reader.c
     src/io/ppm_writer.c
+    src/io/v4l2_capture.c
 )
 
 set(RAWFRAME_PROCESSING
@@ -92,6 +93,8 @@ add_executable(example_blur examples/example_blur.c)
 target_link_libraries(example_blur rawframe)
 add_executable(example_capture examples/example_capture.c)
 target_link_libraries(example_capture rawframe)
+add_executable(example_v4l2 examples/example_v4l2.c)
+target_link_libraries(example_v4l2 rawframe)
 #add_executable(example_processing examples/example_processing.c)
 #target_link_libraries(example_processing rawframe)
 
