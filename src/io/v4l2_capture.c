@@ -1,6 +1,7 @@
 #include "io/v4l2_capture.h"
 #include <errno.h>
 #include <fcntl.h>
+#include <linux/media.h>
 #include <linux/videodev2.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -26,6 +27,94 @@ struct v4l2_device_t {
   uint32_t buffer_count;
   bool is_streaming;
 };
+
+/*
+ * Discovers the correct media node, configures the MIPI pipeline,
+ * and returns the correct /dev/videoX path (e.g. "/dev/video0").
+ * The caller must free() the returned string.
+ */
+char *v4l2_auto_setup_pipeline(uint32_t width, uint32_t height) {
+  char media_path[32] = {0};
+  int found = 0;
+
+  // 1. Find the correct /dev/mediaX node for the Pi 5 (rp1-cfe)
+  for (int i = 0; i < 32; i++) {
+    snprintf(media_path, sizeof(media_path), "/dev/media%d", i);
+    int fd = open(media_path, O_RDWR);
+    if (fd >= 0) {
+      struct media_device_info info;
+      if (ioctl(fd, MEDIA_IOC_DEVICE_INFO, &info) == 0) {
+        // Check if the driver is the Raspberry Pi 5 camera receiver
+        if (strncmp(info.driver, "rp1-cfe", 7) == 0) {
+          found = 1;
+          close(fd);
+          break;
+        }
+      }
+      close(fd);
+    }
+  }
+
+  if (!found) {
+    fprintf(stderr, "Error: Could not find rp1-cfe media node. Is the camera "
+                    "plugged in?\n");
+    return NULL;
+  }
+
+  printf("Discovered Pi 5 Camera Pipeline at: %s\n", media_path);
+
+  // 2. Execute the media-ctl configuration dynamically
+  char cmd[512];
+
+  // Reset topology
+  snprintf(cmd, sizeof(cmd), "media-ctl -d %s -r", media_path);
+  system(cmd);
+
+  // Link CSI2 to the Capture Channel
+  snprintf(cmd, sizeof(cmd),
+           "media-ctl -d %s -l '\"csi2\":4 -> \"rp1-cfe-csi2_ch0\":0[1]'",
+           media_path);
+  system(cmd);
+
+  // Format the IMX219 Sensor Pad
+  snprintf(cmd, sizeof(cmd),
+           "media-ctl -d %s -V '\"imx219 11-0010\":0 [fmt:SRGGB10_1X10/%dx%d "
+           "field:none colorspace:raw]'",
+           media_path, width, height);
+  system(cmd);
+
+  // Format the CSI2 Receiver Pads
+  snprintf(cmd, sizeof(cmd),
+           "media-ctl -d %s -V '\"csi2\":0 [fmt:SRGGB10_1X10/%dx%d field:none "
+           "colorspace:raw]'",
+           media_path, width, height);
+  system(cmd);
+
+  snprintf(cmd, sizeof(cmd),
+           "media-ctl -d %s -V '\"csi2\":4 [fmt:SRGGB10_1X10/%dx%d field:none "
+           "colorspace:raw]'",
+           media_path, width, height);
+  system(cmd);
+
+  printf("Media Controller pipeline configured for %dx%d RAW10.\n", width,
+         height);
+
+  // 3. Ask media-ctl for the exact /dev/videoX node this pipeline is using
+  snprintf(cmd, sizeof(cmd), "media-ctl -d %s -e \"rp1-cfe-csi2_ch0\"",
+           media_path);
+  FILE *fp = popen(cmd, "r");
+  if (!fp)
+    return NULL;
+
+  char *video_node = malloc(32);
+  if (fgets(video_node, 32, fp) != NULL) {
+    // Remove the trailing newline character from the output
+    video_node[strcspn(video_node, "\n")] = 0;
+  }
+  pclose(fp);
+
+  return video_node; // e.g., returns "/dev/video0" dynamically!
+}
 
 /* Allocates memory, opens the device, and applies the config */
 v4l2_device_t *v4l2_device_open(const v4l2_config_t *config) {

@@ -12,8 +12,18 @@
 int main() {
   printf("Starting RawFrame Capture...\n");
 
+  // 1. Auto-configure the hardware pipeline and get the exact video node
+  uint32_t req_width = 1640;
+  uint32_t req_height = 1232;
+
+  char *video_node = v4l2_auto_setup_pipeline(req_width, req_height);
+  if (!video_node) {
+    return EXIT_FAILURE;
+  }
+  printf("Connecting to dynamically discovered video node: %s\n", video_node);
+
   // 1. Fill out the order ticket (Configuration)
-  v4l2_config_t config = {.device_path = "/dev/video0",
+  v4l2_config_t config = {.device_path = video_node,
                           .width = 1640,
                           .height = 1232,
                           .pixel_format = MAKE_FOURCC('p', 'R', 'A', 'A'),
