@@ -1,5 +1,5 @@
-#include <img/isp_pipeline.h>
 #include <img/img_processing.h>
+#include <img/isp_pipeline.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -107,7 +107,8 @@ int isp_pass_black_level_subtraction(isp_context_t *ctx, uint16_t *frame) {
   return 0;
 }
 
-int isp_pass_auto_white_balance_stats(isp_context_t *ctx, const uint16_t* frame) {
+int isp_pass_auto_white_balance_stats(isp_context_t *ctx,
+                                      const uint16_t *frame) {
   printf("  [PASS] %s()\n", __func__);
   if (!ctx || !frame) {
     printf(" -> ERROR: NULL pointer passed to %s\n", __func__);
@@ -115,7 +116,8 @@ int isp_pass_auto_white_balance_stats(isp_context_t *ctx, const uint16_t* frame)
   }
 
   if (ctx->config.input_format != IMG_FMT_BAYER_10BIT) {
-    printf(" -> ERROR: Unsupported Bayer format in %s (Currently expects RGGB)\n",
+    printf(
+        " -> ERROR: Unsupported Bayer format in %s (Currently expects RGGB)\n",
         __func__);
     return -1;
   }
@@ -163,7 +165,7 @@ int isp_pass_auto_white_balance_stats(isp_context_t *ctx, const uint16_t* frame)
   return 0;
 }
 
-int isp_pass_apply_white_balance(isp_context_t *ctx, uint16_t* frame) {
+int isp_pass_apply_white_balance(isp_context_t *ctx, uint16_t *frame) {
   printf("  [PASS] %s()\n", __func__);
   if (!ctx || !frame) {
     printf(" -> ERROR: NULL pointer passed to %s\n", __func__);
@@ -307,20 +309,67 @@ int isp_pass_demosaic(isp_context_t *ctx, const img_t *src, img_t *dst) {
   return 0;
 }
 
+int isp_convert_16bitraw_to_img(isp_context_t *ctx, const uint16_t *src,
+                                img_t *dst) {
+  printf("  [PASS] %s()\n", __func__);
+  if (!ctx || !src || !dst) {
+    printf(" -> ERROR: NULL pointer passed to %s\n", __func__);
+    return -1;
+  }
+
+  if (ctx->config.input_format != IMG_FMT_BAYER_10BIT) {
+    printf(" -> ERROR: Unsupported Bayer format in %s\n", __func__);
+    return -1;
+  }
+
+  if (dst->format != IMG_FMT_BAYER_RGGB) {
+    printf(" -> ERROR: dst image format should be BAYER_RGGB %s\n", __func__);
+    return -1;
+  }
+
+  // Dimensions check
+  if (dst->width != ctx->config.width || dst->height != ctx->config.height) {
+    printf(
+        " -> ERROR: dst image dimensions do not match context config in %s\n",
+        __func__);
+    return -1;
+  }
+
+  uint32_t total_pixels = ctx->config.width * ctx->config.height;
+  uint8_t *dst_pixel = dst->planes[0];
+
+  for (uint32_t i = 0; i < total_pixels; i++) {
+    uint16_t value = src[i];
+    if (value > 1023) {
+      value = 1023; // Clamp to 10-bit max
+    }
+    dst_pixel[i] = (uint8_t)(value >> 2); // Convert to 8-bit by shifting
+  }
+  return 0;
+}
+
 int isp_pass_blur(isp_context_t *ctx, const img_t *src, img_t *dst) {
   printf("  [PASS] %s()\n", __func__);
   return 0;
 }
 
 /* Orchestrator Function */
-int isp_process_frame(isp_context_t *ctx, const uint8_t *src, uint16_t* dst,int frame_index) {
+int isp_process_frame(isp_context_t *ctx, const uint8_t *src, uint16_t *dst,
+                      img_t *out_rgb, int frame_index) {
   printf("[ISP_PIPELINE] %s() [Frame #%u]\n", __func__, frame_index);
 
   if (!ctx || ctx->state != ISP_STATE_RUNNING) {
     printf(" -> ERROR: ISP Engine not running!\n");
     return -1;
   }
-  unpack_10bit_mipi(src, dst, ctx->config.width, ctx->config.height, ctx->config.stride);
+
+  if (!src || !dst || !out_rgb) {
+    printf(" -> ERROR: NULL pointer passed to %s\n", __func__);
+    return -1;
+  }
+
+  unpack_10bit_mipi(src, dst, ctx->config.width, ctx->config.height,
+                    ctx->config.stride);
   // unpack 10-bit MIPI data to 16-bit for processing
 
   if (ctx->config.enable_bls) {
@@ -332,15 +381,29 @@ int isp_process_frame(isp_context_t *ctx, const uint8_t *src, uint16_t* dst,int 
     isp_pass_apply_white_balance(ctx, dst);
   }
 
-  // TODO later
-  /*
+  // Create an 8-bit Bayer image from the 16-bit raw data for further processing
+  img_t *bayer_8bit_img =
+      img_create(ctx->config.width, ctx->config.height, IMG_FMT_BAYER_RGGB);
+  if (!bayer_8bit_img) {
+    printf(" -> ERROR: Failed to create 8-bit Bayer image for processing!\n");
+    return -1;
+  }
+  // convert 16-bit raw to 8-bit Bayer image
+  if (isp_convert_16bitraw_to_img(ctx, dst, bayer_8bit_img) < 0) {
+    printf(" -> ERROR: Failed to convert 16-bit raw to 8-bit Bayer image!\n");
+    img_destroy(bayer_8bit_img);
+    return -1;
+  }
+
   if (ctx->config.enable_demosaic) {
-    isp_pass_demosaic(ctx, src, dst);
+    isp_pass_demosaic(ctx, bayer_8bit_img, out_rgb);
   }
 
   if (ctx->config.enable_blur) {
-    isp_pass_blur(ctx, dst, dst);
-  }*/
+    isp_pass_blur(ctx, out_rgb, out_rgb);
+  }
 
+  // Clean up temporary images
+  img_destroy(bayer_8bit_img);
   return 0;
 }

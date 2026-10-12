@@ -1,5 +1,6 @@
 #include "io/v4l2_capture.h"
 #include <img/isp_pipeline.h>
+#include <io/img_io.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -86,33 +87,40 @@ int main() {
   v4l2_frame_t frame = {0};
   int total_frames = 150;
 
+  // Allocate buffers for ISP output and RGB output
+  uint16_t *isp_output_buffer =
+      malloc(isp_config.width * isp_config.height * sizeof(uint16_t));
+  if (!isp_output_buffer) {
+    fprintf(stderr, "Fatal: Could not allocate ISP output buffer.\n");
+    return EXIT_FAILURE;
+  }
+  img_t *out_rgb =
+      img_create(isp_config.width, isp_config.height, IMG_FMT_RGB24);
+  if (!out_rgb) {
+    fprintf(stderr, "Fatal: Could not create output RGB image.\n");
+    free(isp_output_buffer);
+    return EXIT_FAILURE;
+  }
   for (int i = 0; i < total_frames; i++) {
     // Wait up to 2 seconds for a frame
     if (v4l2_device_dqbuf(camera, &frame, 2) == 0) {
 
       // Process the frame through the ISP pipeline
-      uint16_t *isp_output_buffer =
-          malloc(isp_config.width * isp_config.height * sizeof(uint16_t));
-      if (!isp_output_buffer) {
-        fprintf(stderr, "Fatal: Could not allocate ISP output buffer.\n");
-        break;
-      }
-      if (isp_process_frame(isp_ctx, frame.data, isp_output_buffer, i) < 0) {
+      if (isp_process_frame(isp_ctx, frame.data, isp_output_buffer, out_rgb,
+                            i) < 0) {
         fprintf(stderr, "Error: ISP processing failed for frame %d\n", i);
         free(isp_output_buffer);
+        img_destroy(out_rgb);
         break;
       }
       // Save the raw pixels to disk
       char filename[64];
-      snprintf(filename, sizeof(filename), "frame_%03d.raw", i);
+      snprintf(filename, sizeof(filename), "frame_%03d.bmp", i);
 
-      FILE *fout = fopen(filename, "wb");
-      if (fout) {
-        fwrite(isp_output_buffer, 1,
-               isp_config.width * isp_config.height * sizeof(uint16_t), fout);
-        fclose(fout);
-        printf("Captured and saved %s (Size: %zu bytes)\n", filename,
-               isp_config.width * isp_config.height * sizeof(uint16_t));
+      if (img_save_bmp(filename, out_rgb) < 0) {
+        fprintf(stderr, "Error: Failed to save BMP for frame %d\n", i);
+      } else {
+        printf("Captured and saved %s\n", filename);
       }
 
       // IMMEDIATELY hand the buffer ticket back to the hardware
@@ -129,6 +137,8 @@ int main() {
   // 5. Clean Teardown
   isp_stop(isp_ctx);
   isp_destroy(isp_ctx);
+  img_destroy(out_rgb);
+  free(isp_output_buffer);
   printf("Shutting down camera hardware...\n");
   v4l2_device_close(camera); // This calls stop() and unmaps memory internally
 
