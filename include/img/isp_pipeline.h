@@ -17,6 +17,7 @@ typedef enum {
 typedef struct {
     uint32_t width;
     uint32_t height;
+    size_t stride;
     img_format_t input_format;
     img_format_t output_format;
     
@@ -46,12 +47,13 @@ int isp_stop(isp_context_t* ctx);
 void isp_destroy(isp_context_t* ctx);
 
 // Top-Level Pipeline Runner
-int isp_process_frame(isp_context_t* ctx, const img_t* src, img_t* dst);
+int isp_process_frame(isp_context_t* ctx, const uint8_t* src, uint16_t* dst,int frame_index);
 
 // Empty Pass Stubs
-int isp_pass_black_level_subtraction(isp_context_t* ctx, img_t* frame);
-int isp_pass_auto_white_balance_stats(isp_context_t* ctx, const img_t* frame);
-int isp_pass_apply_white_balance(isp_context_t* ctx, img_t* frame);
+int isp_pass_black_level_subtraction(isp_context_t* ctx, uint16_t* frame);
+int isp_pass_auto_white_balance_stats(isp_context_t* ctx, const uint16_t* frame);
+int isp_pass_apply_white_balance(isp_context_t* ctx, uint16_t* frame);
+int isp_convert_16bitraw_to_img(isp_context_t* ctx, const uint16_t* src, img_t* dst);
 int isp_pass_demosaic(isp_context_t* ctx, const img_t* src, img_t* dst);
 int isp_pass_blur(isp_context_t* ctx, const img_t* src, img_t* dst);
 

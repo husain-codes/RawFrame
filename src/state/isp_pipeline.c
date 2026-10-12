@@ -1,4 +1,5 @@
 #include <img/isp_pipeline.h>
+#include <img/img_processing.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -74,29 +75,27 @@ void isp_destroy(isp_context_t *ctx) {
 }
 
 /* Stubs for each Pass */
-int isp_pass_black_level_subtraction(isp_context_t *ctx, img_t *frame) {
+int isp_pass_black_level_subtraction(isp_context_t *ctx, uint16_t *frame) {
   printf("  [PASS] %s()\n", __func__);
   if (!ctx || !frame) {
     printf("%s: Input is NULL\n", __func__);
     return -1;
   }
 
-  if (frame->format != IMG_FMT_BAYER_RGGB &&
-      frame->format != IMG_FMT_BAYER_BGGR &&
-      frame->format != IMG_FMT_BAYER_GBRG &&
-      frame->format != IMG_FMT_BAYER_GRBG) {
-    printf(" -> ERROR: %s: Input format must be a RAW Bayer pattern\n",
+  // check format is raw bayer 10-bit (IMG_FMT_BAYER_10BIT)
+  if (ctx->config.input_format != IMG_FMT_BAYER_10BIT) {
+    printf("%s: Unsupported input format (Expected IMG_FMT_BAYER_10BIT)\n",
            __func__);
     return -1;
   }
 
-  if (frame->planes[0] == NULL) {
-    printf("%s: NULL plane\n", __func__);
+  if (frame == NULL) {
+    printf("%s: NULL frame\n", __func__);
     return -1;
   }
 
-  uint32_t total_pixel = frame->height * frame->width;
-  uint8_t *pixel = frame->planes[0];
+  uint32_t total_pixel = ctx->config.height * ctx->config.width;
+  uint16_t *pixel = frame;
   uint16_t black_level = ctx->config.black_level;
   for (size_t i = 0; i < total_pixel; i++) {
     if (pixel[i] > black_level) {
@@ -108,28 +107,27 @@ int isp_pass_black_level_subtraction(isp_context_t *ctx, img_t *frame) {
   return 0;
 }
 
-int isp_pass_auto_white_balance_stats(isp_context_t *ctx, const img_t *frame) {
+int isp_pass_auto_white_balance_stats(isp_context_t *ctx, const uint16_t* frame) {
   printf("  [PASS] %s()\n", __func__);
-  if (!ctx || !frame || !frame->planes[0]) {
+  if (!ctx || !frame) {
     printf(" -> ERROR: NULL pointer passed to %s\n", __func__);
     return -1;
   }
 
-  if (frame->format != IMG_FMT_BAYER_RGGB) {
-    printf(
-        " -> ERROR: Unsupported Bayer format in %s (Currently expects RGGB)\n",
+  if (ctx->config.input_format != IMG_FMT_BAYER_10BIT) {
+    printf(" -> ERROR: Unsupported Bayer format in %s (Currently expects RGGB)\n",
         __func__);
     return -1;
   }
 
-  uint32_t width = frame->width;
-  uint32_t height = frame->height;
-  const uint8_t *pixel = frame->planes[0];
+  uint32_t width = ctx->config.width;
+  uint32_t height = ctx->config.height;
+  const uint16_t *pixel = frame;
   size_t sum_r = 0, sum_g = 0, sum_b = 0;
   size_t count_r = 0, count_g = 0, count_b = 0;
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < width; x++) {
-      uint8_t value = pixel[y * width + x];
+      uint16_t value = pixel[y * width + x];
       if (!(y & 1) && !(x & 1)) {
         count_r++;
         sum_r += value;
@@ -165,25 +163,25 @@ int isp_pass_auto_white_balance_stats(isp_context_t *ctx, const img_t *frame) {
   return 0;
 }
 
-int isp_pass_apply_white_balance(isp_context_t *ctx, img_t *frame) {
+int isp_pass_apply_white_balance(isp_context_t *ctx, uint16_t* frame) {
   printf("  [PASS] %s()\n", __func__);
-  if (!ctx || !frame || !frame->planes[0]) {
+  if (!ctx || !frame) {
     printf(" -> ERROR: NULL pointer passed to %s\n", __func__);
     return -1;
   }
 
-  if (frame->format != IMG_FMT_BAYER_RGGB) {
+  if (ctx->config.input_format != IMG_FMT_BAYER_10BIT) {
     printf(" -> ERROR: Unsupported Bayer format in %s\n", __func__);
     return -1;
   }
 
-  uint32_t width = frame->width;
-  uint32_t height = frame->height;
-  uint8_t *pixel = frame->planes[0];
+  uint32_t width = ctx->config.width;
+  uint32_t height = ctx->config.height;
+  uint16_t *pixel = frame;
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < width; x++) {
       size_t idx = y * width + x;
-      uint8_t value = pixel[idx];
+      uint16_t value = pixel[idx];
       if (!(y & 1) && !(x & 1)) {
         // Red pixel
         float new_val = value * ctx->r_gain;
@@ -315,13 +313,15 @@ int isp_pass_blur(isp_context_t *ctx, const img_t *src, img_t *dst) {
 }
 
 /* Orchestrator Function */
-int isp_process_frame(isp_context_t *ctx, const img_t *src, img_t *dst) {
-  printf("[ISP_PIPELINE] %s() [Frame #%u]\n", __func__, src->frame_seq);
+int isp_process_frame(isp_context_t *ctx, const uint8_t *src, uint16_t* dst,int frame_index) {
+  printf("[ISP_PIPELINE] %s() [Frame #%u]\n", __func__, frame_index);
 
   if (!ctx || ctx->state != ISP_STATE_RUNNING) {
     printf(" -> ERROR: ISP Engine not running!\n");
     return -1;
   }
+  unpack_10bit_mipi(src, dst, ctx->config.width, ctx->config.height, ctx->config.stride);
+  // unpack 10-bit MIPI data to 16-bit for processing
 
   if (ctx->config.enable_bls) {
     isp_pass_black_level_subtraction(ctx, (img_t *)src);
@@ -332,13 +332,15 @@ int isp_process_frame(isp_context_t *ctx, const img_t *src, img_t *dst) {
     isp_pass_apply_white_balance(ctx, (img_t *)src);
   }
 
+  // TODO later
+  /*
   if (ctx->config.enable_demosaic) {
     isp_pass_demosaic(ctx, src, dst);
   }
 
   if (ctx->config.enable_blur) {
     isp_pass_blur(ctx, dst, dst);
-  }
+  }*/
 
   return 0;
 }

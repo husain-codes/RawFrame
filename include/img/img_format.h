@@ -20,6 +20,7 @@ typedef enum {
   IMG_FMT_BAYER_BGGR,
   IMG_FMT_BAYER_GBRG,
   IMG_FMT_BAYER_GRBG,
+  IMG_FMT_BAYER_10BIT, // rpi raw10 format (packed 10-bit MIPI)
 } img_format_t;
 
 size_t img_format_bytes_per_pixel(img_format_t format);

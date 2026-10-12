@@ -43,6 +43,7 @@ set(RAWFRAME_PROCESSING
     src/processing/img_grayscale.c
     src/processing/img_invert.c
     src/processing/img_blur.c
+    src/processing/img_unpack.c
 )
 
 set(RAWFRAME_DISPLAY)

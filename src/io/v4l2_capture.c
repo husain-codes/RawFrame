@@ -178,6 +178,18 @@ v4l2_device_t *v4l2_device_open(const v4l2_config_t *config) {
   return dev; // Hand back the opaque pointer!
 }
 
+int v4l2_device_get_format(const v4l2_device_t *dev,
+                           v4l2_capture_format_t *format) {
+  if (!dev || !format)
+    return -1;
+
+  format->width = dev->width;
+  format->height = dev->height;
+  format->stride = dev->stride;
+  format->pixel_format = dev->pixel_format;
+  return 0;
+}
+
 /* Queues buffers and turns the stream on */
 int v4l2_device_start(v4l2_device_t *dev) {
   if (!dev)

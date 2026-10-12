@@ -1,4 +1,5 @@
 #include "io/v4l2_capture.h"
+#include <img/isp_pipeline.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -31,14 +32,52 @@ int main() {
 
   // 2. Open the camera
   v4l2_device_t *camera = v4l2_device_open(&config);
+  free(video_node);
   if (!camera) {
     fprintf(stderr, "Fatal: Could not initialize camera.\n");
+    return EXIT_FAILURE;
+  }
+
+  v4l2_capture_format_t capture_format;
+  if (v4l2_device_get_format(camera, &capture_format) < 0) {
+    fprintf(stderr, "Fatal: Could not retrieve camera format.\n");
+    v4l2_device_close(camera);
+    return EXIT_FAILURE;
+  }
+
+  // Starting camera state machine
+  isp_context_t *isp_ctx = isp_create();
+  if (!isp_ctx) {
+    fprintf(stderr, "Fatal: Could not create ISP context.\n");
+    v4l2_device_close(camera);
+    return EXIT_FAILURE;
+  }
+  isp_config_t isp_config = {.width = capture_format.width,
+                             .height = capture_format.height,
+                             .stride = capture_format.stride,
+                             .input_format = IMG_FMT_BAYER_10BIT,
+                             .output_format = IMG_FMT_RGB24,
+                             .black_level = 16,
+                             .enable_bls = true,
+                             .enable_awb = true,
+                             .enable_demosaic = true};
+  if (isp_init(isp_ctx, &isp_config) < 0) {
+    fprintf(stderr, "Fatal: Could not initialize ISP.\n");
+    isp_destroy(isp_ctx);
+    v4l2_device_close(camera);
     return EXIT_FAILURE;
   }
 
   // 3. Start the hardware stream
   if (v4l2_device_start(camera) < 0) {
     fprintf(stderr, "Fatal: Could not start hardware stream.\n");
+    v4l2_device_close(camera);
+    return EXIT_FAILURE;
+  }
+
+  if (isp_start(isp_ctx) < 0) {
+    fprintf(stderr, "Fatal: Could not start ISP.\n");
+    isp_destroy(isp_ctx);
     v4l2_device_close(camera);
     return EXIT_FAILURE;
   }
@@ -51,16 +90,29 @@ int main() {
     // Wait up to 2 seconds for a frame
     if (v4l2_device_dqbuf(camera, &frame, 2) == 0) {
 
+      // Process the frame through the ISP pipeline
+      uint16_t *isp_output_buffer =
+          malloc(isp_config.width * isp_config.height * sizeof(uint16_t));
+      if (!isp_output_buffer) {
+        fprintf(stderr, "Fatal: Could not allocate ISP output buffer.\n");
+        break;
+      }
+      if (isp_process_frame(isp_ctx, frame.data, isp_output_buffer, i) < 0) {
+        fprintf(stderr, "Error: ISP processing failed for frame %d\n", i);
+        free(isp_output_buffer);
+        break;
+      }
       // Save the raw pixels to disk
       char filename[64];
       snprintf(filename, sizeof(filename), "frame_%03d.raw", i);
 
       FILE *fout = fopen(filename, "wb");
       if (fout) {
-        fwrite(frame.data, 1, frame.size, fout);
+        fwrite(isp_output_buffer, 1,
+               isp_config.width * isp_config.height * sizeof(uint16_t), fout);
         fclose(fout);
         printf("Captured and saved %s (Size: %zu bytes)\n", filename,
-               frame.size);
+               isp_config.width * isp_config.height * sizeof(uint16_t));
       }
 
       // IMMEDIATELY hand the buffer ticket back to the hardware
@@ -75,6 +127,8 @@ int main() {
   }
 
   // 5. Clean Teardown
+  isp_stop(isp_ctx);
+  isp_destroy(isp_ctx);
   printf("Shutting down camera hardware...\n");
   v4l2_device_close(camera); // This calls stop() and unmaps memory internally
 
