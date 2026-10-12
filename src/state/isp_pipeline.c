@@ -69,9 +69,10 @@ int isp_stop(isp_context_t *ctx) {
 
 void isp_destroy(isp_context_t *ctx) {
   printf("[ISP_API] %s()\n", __func__);
-  if (ctx)
+  if (ctx) {
+    ctx->state = ISP_STATE_UNINIT;
     free(ctx);
-  ctx->state = ISP_STATE_UNINIT;
+  }
 }
 
 /* Stubs for each Pass */

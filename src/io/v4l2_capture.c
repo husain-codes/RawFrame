@@ -43,6 +43,7 @@ char *v4l2_auto_setup_pipeline(uint32_t width, uint32_t height) {
     int fd = open(media_path, O_RDWR);
     if (fd >= 0) {
       struct media_device_info info;
+      memset(&info, 0, sizeof(info));
       if (ioctl(fd, MEDIA_IOC_DEVICE_INFO, &info) == 0) {
         // Check if the driver is the Raspberry Pi 5 camera receiver
         if (strncmp(info.driver, "rp1-cfe", 7) == 0) {
