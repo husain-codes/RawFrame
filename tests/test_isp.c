@@ -115,16 +115,17 @@ void test_isp_awb_clamping_prevents_overflow(void) {
                          .output_format = IMG_FMT_BAYER_10BIT};
   TEST_ASSERT_EQUAL(0, isp_init(ctx, &config));
 
-  // Manually set high gain that would cause 200 * 2.0 = 400 (>255)
+  // Keep values above 8-bit range intact, but clamp above the 10-bit maximum.
   ctx->r_gain = 2.0f;
-  ctx->b_gain = 1.0f;
+  ctx->b_gain = 2.0f;
 
-  uint16_t raw_frame[4] = {200, 0, 0, 0}; // High Red value
+  uint16_t raw_frame[4] = {200, 0, 0, 600};
 
   TEST_ASSERT_EQUAL(0, isp_pass_apply_white_balance(ctx, raw_frame));
 
-  // Assert Red pixel clamped to 255 (does not wrap to 144)
-  TEST_ASSERT_EQUAL_UINT16(255, raw_frame[0]);
+  // 200 * 2 stays 400 rather than wrapping to 144; 600 * 2 clamps to 1023.
+  TEST_ASSERT_EQUAL_UINT16(400, raw_frame[0]);
+  TEST_ASSERT_EQUAL_UINT16(1023, raw_frame[3]);
 
   free(ctx);
 }

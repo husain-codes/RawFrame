@@ -189,13 +189,13 @@ int isp_pass_apply_white_balance(isp_context_t *ctx, uint16_t* frame) {
         // value, ctx->r_gain, new_val);
         if (new_val > 1023.0f)
           new_val = 1023.0f;
-        pixel[idx] = (uint8_t)(new_val + 0.5f);
+        pixel[idx] = (uint16_t)(new_val + 0.5f);
       } else if ((y & 1) && (x & 1)) {
         // Blue pixel
         float new_val = value * ctx->b_gain;
         if (new_val > 1023.0f)
           new_val = 1023.0f;
-        pixel[idx] = (uint8_t)(new_val + 0.5f);
+        pixel[idx] = (uint16_t)(new_val + 0.5f);
       }
     }
   }
