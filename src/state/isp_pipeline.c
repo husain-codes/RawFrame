@@ -324,12 +324,12 @@ int isp_process_frame(isp_context_t *ctx, const uint8_t *src, uint16_t* dst,int 
   // unpack 10-bit MIPI data to 16-bit for processing
 
   if (ctx->config.enable_bls) {
-    isp_pass_black_level_subtraction(ctx, (img_t *)src);
+    isp_pass_black_level_subtraction(ctx, dst);
   }
 
   if (ctx->config.enable_awb) {
-    isp_pass_auto_white_balance_stats(ctx, src);
-    isp_pass_apply_white_balance(ctx, (img_t *)src);
+    isp_pass_auto_white_balance_stats(ctx, dst);
+    isp_pass_apply_white_balance(ctx, dst);
   }
 
   // TODO later
