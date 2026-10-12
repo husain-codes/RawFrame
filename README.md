@@ -3,44 +3,58 @@
 ![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)
 ![CI](https://github.com/husain-codes/RawFrame/actions/workflows/cmake-single-platform.yml/badge.svg)
 
-RawFrame is a lightweight, modular image processing library written in pure C.
+RawFrame is a full-stack, modular embedded Linux camera pipeline built specifically for the **Raspberry Pi 5**. 
 
-It provides a clean abstraction over raw pixel buffers and multi-plane image layouts used by camera pipelines and embedded vision systems.
+It bridges the gap between low-level kernel space and high-level application rendering by providing a complete ecosystem: **Custom V4L2 Kernel Driver ➔ V4L2 Hardware Capture ➔ Custom C ISP Engine ➔ C++/Qt/OpenGL Application Layer**, all within a single monolithic repository.
+---
 
-This library is built for low-level image format conversion, memory-safe buffer management, and simple testing in automotive, Android HAL, and ISP learning projects.
+## 🎯 The Purpose
+
+RawFrame has evolved into a complete learning ecosystem for embedded vision and camera architectures. It is designed for developers who want to understand exactly how raw photons hit a sensor (like the IMX219), how a custom Linux kernel driver registers the hardware, how the data travels through the V4L2 subsystem, gets mathematically processed (Custom ISP), and finally renders on a UI (Qt/OpenGL)—all without relying on opaque black-box vendor blobs.
 
 ---
 
-## Why RawFrame
-
-RawFrame is designed as a camera pipeline learning library for developers who want to understand raw image layouts, planar YUV, and format conversion used in Android camera HAL and automotive ISP work. It keeps the core clean, uses explicit `img_t` metadata, and exposes both packed and multi-plane image surfaces.
-
----
-
-## 🚀 Features
-
-- `img_t` image object abstraction with metadata, format, and per-plane pointers
-- Multi-plane support for YUV formats, including `planes[3]` and per-plane stride control
-- BMP file I/O for image load/save
-- RGB/BGR byte-order toggle and packed pixel format manipulation
-- Color conversion: RGB ↔ BGR, RGB ↔ GRAY, RGB ↔ YUV444, RGB ↔ NV12, RGB ↔ YUV420P
-- Image processing: copy, invert, grayscale, blur
-- Unity-based tests covering conversion and buffer layout behavior
-- Modular architecture for core, IO, processing, and test layers
+## 🚀 Key Features
+- **Custom V4L2 Kernel Driver:** Writing a custom Linux kernel module from scratch to interface with the camera sensor and the MIPI CSI-2 receiver.
+- **Direct V4L2 Integration:** Direct user-space communication with `/dev/videoX` to allocate kernel buffers, map memory, and capture raw MIPI CSI-2 frames.
+- **Custom Image Signal Processor (ISP):**
+  - 10-bit packed MIPI (`pRAA`) to 16-bit unpacking.
+  - Black Level Subtraction (BLS) to fix sensor floor noise.
+  - Auto White Balance (AWB) using the Grey World assumption with 16-bit precision.
+  - High-quality Bayer Demosaicing (RGGB to RGB24).
+- **Zero-Copy Architecture:** Wraps V4L2 kernel memory directly into the `img_t` abstraction to avoid expensive memory copies before ISP processing.
+- **C++/Qt Application Layer:** A front-end orchestrator for real-time OpenGL rendering of the processed ISP frames.
+- **Legacy Format Support:** Retains memory-safe buffer management and conversions for planar YUV, NV12, and standard RGB/BGR formats.
 
 ---
-
-## Supported Pixel Formats
+## 📸 Supported Camera Formats
 
 | Format | Description |
 |---|---|
-| `RGB24` | Packed 24-bit RGB (R,G,B) |
-| `BGR24` | Packed 24-bit BGR (B,G,R) |
-| `GRAY8` | 8-bit grayscale |
-| `PPM` | Portable Pixmap format loader/saver |
-| `YUV444` | Full-resolution planar YUV |
-| `NV12` | 4:2:0 semiplanar YUV with interleaved UV plane |
-| `YUV420P` | 4:2:0 planar YUV with separate Y, U, V planes |
+| `pRAA` (10-bit MIPI) | V4L2 packed raw Bayer format (4 pixels in 5 bytes). |
+| `BAYER_16BIT` | Unpacked 16-bit intermediate representation for high-precision math. |
+| `BAYER_RGGB` | 8-bit demosaic-ready raw grid. |
+| `RGB24` / `BGR24` | Packed 24-bit output formats for Qt/OpenGL rendering. |
+| `YUV420P` / `NV12` | Planar formats for video encoding. |
+| `PPM` / `BMP` | Native file I/O for debugging and saving frames. |
+
+---
+
+## 🧱 Pipeline Architecture
+
+RawFrame follows a strict separation of concerns across four distinct layers:
+
+### 1. Kernel Layer (C)
+- Custom V4L2 subdevice driver development to initialize the sensor, configure MIPI lanes, and expose controls to user-space.
+
+### 2. Hardware Capture Layer (C)
+- `v4l2_capture.c`: Handles `VIDIOC_REQBUFS`, `VIDIOC_QBUF`, and `VIDIOC_DQBUF`. Auto-discovers the correct video node for the active sensor and manages the streaming state machine.
+
+### 3. Middleware / ISP Layer (C)
+- `isp_pipeline.c`: The mathematical heart of the camera. Takes raw packed bytes, unpacks them to a 16-bit `img_t` buffer, applies BLS and AWB, scales to 8-bit, and demosaics into a final RGB image.
+
+### 4. Application Layer (C++ / Qt)
+- The orchestrator. It holds the `rawframe_handle_t`, calls the frame grabber, and pushes the final RGB frames to an OpenGL texture for zero-latency display.
 
 ---
 
@@ -57,39 +71,40 @@ RawFrame is designed as a camera pipeline learning library for developers who wa
 
 ---
 
-## Example
+## 💻 Example: The Capture Loop
 
 ```c
-#include <stdio.h>
-#include <img/img.h>
-#include <img/img_convert.h>
+#include <io/v4l2_capture.h>
+#include <img/isp_pipeline.h>
 
-int main(void) {
-    img_t *img = img_load_bmp("frame.bmp");
-    if (!img) {
-        fprintf(stderr, "Failed to load frame.bmp\n");
-        return 1;
+int main() {
+    // 1. Initialize Hardware
+    v4l2_config_t hw_config = { .width = 1640, .height = 1232, .pixel_format = V4L2_PIX_FMT_SRGGB10P };
+    v4l2_device_t *camera = v4l2_device_open(&hw_config);
+    v4l2_device_start(camera);
+
+    // 2. Initialize ISP
+    isp_context_t *isp = isp_create();
+    isp_init(isp, &isp_config);
+    isp_start(isp);
+
+    // 3. The Real-Time Loop
+    v4l2_frame_t frame = {0};
+    if (v4l2_device_dqbuf(camera, &frame, 2) == 0) {
+
+        // Unpack, BLS, AWB, and Demosaic directly from kernel memory
+        isp_process_frame(isp, frame.data, output_rgb_buffer, frame_id);
+
+        // Return memory to kernel
+        v4l2_device_qbuf(camera, frame.index);
     }
 
-    if (img_toggle_rgb_bgr(img) != 0) {
-        fprintf(stderr, "Failed to toggle RGB/BGR\n");
-        img_destroy(img);
-        return 1;
-    }
-
-    img_t *nv12 = img_convert_rgb_to_nv12(img);
-    if (!nv12) {
-        fprintf(stderr, "RGB to NV12 conversion failed\n");
-        img_destroy(img);
-        return 1;
-    }
-
-    printf("Converted image to NV12: %dx%d\n", nv12->width, nv12->height);
-    img_destroy(nv12);
-    img_destroy(img);
+    // 4. Teardown
+    isp_destroy(isp);
+    v4l2_device_close(camera);
     return 0;
 }
-```
+```c
 
 ---
 
