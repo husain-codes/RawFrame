@@ -26,6 +26,7 @@ typedef struct {
   int enable_awb;
   int enable_demosaic;
   int enable_blur;
+  int enable_gamma_correction;
 } isp_config_t;
 
 // ISP Context (State Machinery)

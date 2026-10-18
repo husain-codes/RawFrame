@@ -179,6 +179,35 @@ v4l2_device_t *v4l2_device_open(const v4l2_config_t *config) {
   return dev; // Hand back the opaque pointer!
 }
 
+int open_v4l2_subdevice(const char *subdev_path) {
+  int subdev_fd = open(subdev_path, O_RDWR);
+  if (subdev_fd < 0) {
+    perror("Unable to open v4l2 subdevice");
+    return -1;
+  }
+  return subdev_fd;
+}
+
+int set_camera_control(int fd, uint32_t control_id, uint32_t value) {
+  if(control_id ==1)
+    control_id = V4L2_CID_EXPOSURE;
+  else if(control_id == 2)
+    control_id = V4L2_CID_ANALOGUE_GAIN;
+  else if(control_id == 3)
+    control_id = 0x009f0905; // hardware digital gain
+
+  struct v4l2_control control = {0};
+  control.id = control_id;
+  control.value = value;
+
+  if (ioctl(fd, VIDIOC_S_CTRL, &control) < 0) {
+    perror("VIDIOC_S_CTRL failed");
+    return -1;
+  }
+  printf("Set control ID 0x%08x to value %u\n", control_id, value);
+  return 0;
+}
+
 int v4l2_device_get_format(const v4l2_device_t *dev,
                            v4l2_capture_format_t *format) {
   if (!dev || !format)
@@ -335,4 +364,12 @@ void v4l2_device_close(v4l2_device_t *dev) {
   }
 
   free(dev); // Free the malloc'd struct!
+}
+
+int v4l2_subdevice_close(int fd) {
+  if (fd >= 0) {
+    close(fd);
+    return 0;
+  }
+  return -1;
 }

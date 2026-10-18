@@ -435,9 +435,8 @@ int isp_process_frame(isp_context_t *ctx, const uint8_t *src, uint16_t *dst,
     isp_pass_demosaic(ctx, bayer_8bit_img, out_rgb);
   }
 
-  if(isp_pass_gamma_correction(ctx,out_rgb) < 0) {
-    printf(" -> ERROR: Failed to apply gamma correction on 8-bit RGB image!\n");
-    return -1;
+  if(ctx->config.enable_gamma_correction) {
+    isp_pass_gamma_correction(ctx, out_rgb);
   }
 
   if (ctx->config.enable_blur) {

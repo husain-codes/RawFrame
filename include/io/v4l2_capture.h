@@ -61,4 +61,12 @@ int v4l2_device_dqbuf(v4l2_device_t *dev, v4l2_frame_t *frame, int timeout_sec);
 /* Returns the buffer back to the hardware pipeline */
 int v4l2_device_qbuf(v4l2_device_t *dev, uint32_t buffer_index);
 
+// Helper function to open v4l2 subdevice
+int open_v4l2_subdevice(const char *subdev_path);
+
+/* Sets a V4L2 control on the device */
+int set_camera_control(int fd , uint32_t control_id, uint32_t value);
+
+int v4l2_subdevice_close(int fd);
+
 #endif // V4L2_CAPTURE_H
