@@ -1,5 +1,6 @@
-#include "io/v4l2_capture.h"
+#include <io/v4l2_capture.h>
 #include <img/isp_pipeline.h>
+#include <img/img_convert.h>
 #include <io/img_io.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -136,10 +137,24 @@ int main() {
       char filename[64];
       snprintf(filename, sizeof(filename), "frame_%03d.bmp", i);
 
+      // convert RGB to BGR for BMP saving
+      if(img_toggle_rgb_bgr(out_rgb) < 0) {
+        fprintf(stderr, "Error: Failed to toggle RGB/BGR for frame %d\n", i);
+      } else {
+        printf("Toggled RGB/BGR for frame %d\n", i);
+      }
+
       if (img_save_bmp(filename, out_rgb) < 0) {
         fprintf(stderr, "Error: Failed to save BMP for frame %d\n", i);
       } else {
         printf("Captured and saved %s\n", filename);
+      }
+
+      // convert back to RGB for next processing
+      if(img_toggle_rgb_bgr(out_rgb) < 0) {
+        fprintf(stderr, "Error: Failed to toggle RGB/BGR back for frame %d\n", i);
+      } else {
+        printf("Toggled RGB/BGR back for frame %d\n", i);
       }
 
       // IMMEDIATELY hand the buffer ticket back to the hardware
