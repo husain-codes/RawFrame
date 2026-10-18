@@ -61,12 +61,31 @@ int main() {
                              .black_level = 16,
                              .enable_bls = true,
                              .enable_awb = true,
-                             .enable_demosaic = true};
+                             .enable_demosaic = true,
+                             .enable_gamma_correction = true,
+                             .enable_ccm = true};
   if (isp_init(isp_ctx, &isp_config) < 0) {
     fprintf(stderr, "Fatal: Could not initialize ISP.\n");
     isp_destroy(isp_ctx);
     v4l2_device_close(camera);
     return EXIT_FAILURE;
+  }
+
+  // set the camera controls if needed (example: exposure, gain, etc.)
+  int subdev_fd = open_v4l2_subdevice("/dev/v4l-subdev2");
+  if(subdev_fd < 0) {
+    fprintf(stderr, "Warning: Failed to open v4l2 subdevice for controls\n");
+  } else {
+    if (set_camera_control(subdev_fd, 1, 3500) < 0) {
+      fprintf(stderr, "Warning: Failed to set exposure control\n");
+    }
+    if( set_camera_control(subdev_fd, 2, 100) < 0) {
+      fprintf(stderr, "Warning: Failed to set gain control\n");
+    }
+    if (set_camera_control(subdev_fd, 3, 4095) < 0) {
+      fprintf(stderr, "Warning: Failed to set digital gain\n");
+    }
+    v4l2_subdevice_close(subdev_fd);
   }
 
   // 3. Start the hardware stream

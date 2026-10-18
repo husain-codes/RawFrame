@@ -27,6 +27,7 @@ typedef struct {
   int enable_demosaic;
   int enable_blur;
   int enable_gamma_correction;
+  int enable_ccm;
 } isp_config_t;
 
 // ISP Context (State Machinery)
@@ -60,6 +61,8 @@ int isp_pass_apply_white_balance(isp_context_t *ctx, uint16_t *frame);
 int isp_convert_16bitraw_to_img(isp_context_t *ctx, const uint16_t *src,
                                 img_t *dst);
 int isp_pass_demosaic(isp_context_t *ctx, const img_t *src, img_t *dst);
+int isp_pass_gamma_correction(isp_context_t *ctx, img_t *img);
+int isp_pass_ccm(isp_context_t *ctx, img_t *img);
 int isp_pass_blur(isp_context_t *ctx, const img_t *src, img_t *dst);
 
 #endif // ISP_PIPELINE_H

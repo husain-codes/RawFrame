@@ -389,6 +389,46 @@ int isp_pass_gamma_correction(isp_context_t *ctx, img_t *img) {
   return 0;
 }
 
+int isp_pass_ccm(isp_context_t *ctx, img_t *img) {
+  printf("  [PASS] %s()\n", __func__);
+  if (!ctx || !img) return -1;
+  if (img->format != IMG_FMT_RGB24) {
+    printf(" -> ERROR: src image format must be RGB24 in %s\n", __func__);
+    return -1;
+  }
+
+  // Standard IMX219 D65 Color Correction Matrix
+  const float ccm[3][3] = {
+      {1.65f, -0.45f, -0.20f},  // R' = 1.65*R - 0.45*G - 0.20*B
+      {-0.30f,  1.40f, -0.10f},   // G' = -0.30*R + 1.40*G - 0.10*B
+      {-0.15f, -0.45f,  1.60f}    // B' = -0.15*R - 0.45*G + 1.60*B
+  };
+
+  uint32_t width = img->width;
+  uint32_t height = img->height;
+  int bpp = img_format_bytes_per_pixel(img->format);
+  uint8_t *pixel;
+
+  for(int y = 0; y < height; y++) {
+    for(int x = 0; x < width; x++) {
+      pixel = img->planes[0] + y * img->stride[0] + x * bpp;
+      float r = (float)pixel[0];
+      float g = (float)pixel[1];
+      float b = (float)pixel[2];
+
+      // Apply CCM
+      float r_new = (ccm[0][0]*r) + (ccm[0][1]*g) + (ccm[0][2]*b);
+      float g_new = (ccm[1][0]*r) + (ccm[1][1]*g) + (ccm[1][2]*b);
+      float b_new = (ccm[2][0]*r) + (ccm[2][1]*g) + (ccm[2][2]*b);
+
+      // Clamp to [0, 255]
+      pixel[0] = (uint8_t)(r_new < 0.0f ? 0.0f : (r_new > 255.0f ? 255.0f : r_new));
+      pixel[1] = (uint8_t)(g_new < 0.0f ? 0.0f : (g_new > 255.0f ? 255.0f : g_new));
+      pixel[2] = (uint8_t)(b_new < 0.0f ? 0.0f : (b_new > 255.0f ? 255.0f : b_new));
+    }
+  }
+  return 0;
+}
 /* Orchestrator Function */
 int isp_process_frame(isp_context_t *ctx, const uint8_t *src, uint16_t *dst,
                       img_t *out_rgb, int frame_index) {
@@ -433,6 +473,10 @@ int isp_process_frame(isp_context_t *ctx, const uint8_t *src, uint16_t *dst,
 
   if (ctx->config.enable_demosaic) {
     isp_pass_demosaic(ctx, bayer_8bit_img, out_rgb);
+  }
+
+  if(ctx->config.enable_ccm) {
+    isp_pass_ccm(ctx, out_rgb);
   }
 
   if(ctx->config.enable_gamma_correction) {
