@@ -2,6 +2,7 @@
 #include <img/isp_pipeline.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 
 isp_context_t *isp_create(void) {
   printf("[ISP_API] %s()\n", __func__);
@@ -48,6 +49,12 @@ int isp_init(isp_context_t *ctx, const isp_config_t *config) {
   ctx->g_gain = 1.0f;
   ctx->b_gain = 1.0f;
   ctx->state = ISP_STATE_CONFIGURED;
+
+  // Initialize Gamma LUT to identity mapping
+  for(int i=0; i<256; i++) {
+    float val = i/255.0;
+    ctx->gamma_lut[i] = (uint8_t)(pow(val, 1.0f / 2.2f) * 255.0f + 0.5f);
+  }
   return 0;
 }
 
@@ -354,6 +361,34 @@ int isp_pass_blur(isp_context_t *ctx, const img_t *src, img_t *dst) {
   return 0;
 }
 
+int isp_pass_gamma_correction(isp_context_t *ctx, img_t *img) {
+  printf("  [PASS] %s()\n", __func__);
+  if (!ctx || !img) {
+    printf(" -> ERROR: NULL pointer passed to %s\n", __func__);
+    return -1;
+  }
+  uint32_t width = img->width;
+  uint32_t height = img->height;
+
+  if (img->format != IMG_FMT_RGB24) {
+    printf(" -> ERROR: src image format must be RGB24 in %s\n", __func__);
+    return -1;
+  }
+
+  int bpp = img_format_bytes_per_pixel(img->format);
+  uint8_t *pixel;
+
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x++) {
+      pixel = img->planes[0] +y * img->stride[0] + x * bpp;
+      pixel[0] = ctx->gamma_lut[pixel[0]];
+      pixel[1] = ctx->gamma_lut[pixel[1]];
+      pixel[2] = ctx->gamma_lut[pixel[2]];
+    }
+  }
+  return 0;
+}
+
 /* Orchestrator Function */
 int isp_process_frame(isp_context_t *ctx, const uint8_t *src, uint16_t *dst,
                       img_t *out_rgb, int frame_index) {
@@ -398,6 +433,11 @@ int isp_process_frame(isp_context_t *ctx, const uint8_t *src, uint16_t *dst,
 
   if (ctx->config.enable_demosaic) {
     isp_pass_demosaic(ctx, bayer_8bit_img, out_rgb);
+  }
+
+  if(isp_pass_gamma_correction(ctx,out_rgb) < 0) {
+    printf(" -> ERROR: Failed to apply gamma correction on 8-bit RGB image!\n");
+    return -1;
   }
 
   if (ctx->config.enable_blur) {

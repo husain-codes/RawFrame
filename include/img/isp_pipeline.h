@@ -32,6 +32,7 @@ typedef struct {
 typedef struct {
   isp_state_t state;
   isp_config_t config;
+  uint8_t gamma_lut[256]; // Gamma LUT for 8-bit output
 
   // Dynamic 3A Gains
   float r_gain;
