@@ -1,5 +1,6 @@
 #include <img/img_processing.h>
 #include <img/isp_pipeline.h>
+#include <io/v4l2_capture.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -138,6 +139,11 @@ int isp_pass_auto_white_balance_stats(isp_context_t *ctx,
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < width; x++) {
       uint16_t value = pixel[y * width + x];
+      // Ignore blown-out highlights (like the sun or clipped sky)
+      // Assuming 10-bit data, ignore anything near the 1023 max
+      if (value > 1000) {
+          continue;
+      }
       if (!(y & 1) && !(x & 1)) {
         count_r++;
         sum_r += value;
@@ -170,6 +176,17 @@ int isp_pass_auto_white_balance_stats(isp_context_t *ctx,
   ctx->r_gain = avg_g / avg_r;
   ctx->g_gain = 1.0f;
   ctx->b_gain = avg_g / avg_b;
+
+  // Apply AWB Gain Clamping to prevent Color Failure
+  // IMX219 typical safe bounds: R [1.2 - 2.8], B [1.2 - 2.8]
+  if (ctx->r_gain < 1.55f) ctx->r_gain = 1.55f;
+  if (ctx->r_gain > 2.8f) ctx->r_gain = 2.8f;
+
+  if (ctx->b_gain < 1.4f) ctx->b_gain = 1.4f;
+  if (ctx->b_gain > 2.8f) ctx->b_gain = 2.8f;
+
+  printf("  -> DEBUG: AWB Multipliers - R: %.3f | G: %.3f | B: %.3f\n",
+         ctx->r_gain, ctx->g_gain, ctx->b_gain);
   return 0;
 }
 
@@ -429,6 +446,85 @@ int isp_pass_ccm(isp_context_t *ctx, img_t *img) {
   }
   return 0;
 }
+
+int isp_pass_aec_stats(isp_context_t *ctx, const uint16_t *frame) {
+  printf("  [PASS] %s()\n", __func__);
+  if (!ctx || !frame) {
+    printf(" -> ERROR: NULL pointer passed to %s\n", __func__);
+    return -1;
+  }
+  uint64_t total_luma = 0;
+  uint32_t total_pixels = ctx->config.width * ctx->config.height;
+
+  for (size_t i = 0; i < total_pixels; i++) {
+    total_luma += frame[i];
+  }
+
+  int avg_luma = (int)total_luma / (double)total_pixels;
+  printf("  -> DEBUG: Current Avg Frame Luma: %d / Target: %d\n", avg_luma, TARGET_LUMA);
+
+  // Store the average luminance in the context for AEC adjustment
+  ctx->current_luma = avg_luma;
+
+  return 0;
+}
+
+int isp_pass_update_aec(int subdev_fd, int current_luma, uint32_t *current_exp, uint32_t *current_again, uint32_t *current_dgain) {
+  printf("  [PASS] %s()\n", __func__);
+  if (!current_exp || !current_again || !current_dgain) {
+    printf(" -> ERROR: NULL pointer passed to %s\n", __func__);
+    return -1;
+  }
+
+  int luma_diff = TARGET_LUMA - current_luma;
+
+  // If the difference is within the tolerance, no adjustment is needed
+  if (abs(luma_diff) <= AEC_TOLERANCE) {
+    printf("  -> DEBUG: Luma within tolerance. No AEC adjustment needed.\n");
+    return 0;
+  }
+
+  // Simple proportional control for exposure and gain adjustment
+  float p_gain = 0.1f; // Tune this prevent oscillating/flickering
+  if (abs(luma_diff) > 80) {
+      p_gain = 1.0f;  // Massive steps when completely wrong
+  } else if (abs(luma_diff) > 40) {
+      p_gain = 0.5f;  // Medium steps as it gets closer
+  }
+  int adj = (int)(luma_diff * p_gain);
+
+  if (adj > 0) { // Too dark, increase light
+    if (*current_exp < 3500) {
+      *current_exp = (*current_exp + adj > 3500) ? 3500 : *current_exp + adj;
+      set_camera_control(subdev_fd, 1, *current_exp);
+    } else if (*current_again < 232) {
+      *current_again = (*current_again + (adj/2) > 232) ? 232 : *current_again + (adj/2);
+      set_camera_control(subdev_fd, 2, *current_again);
+    } else if (*current_dgain < 1024) {
+      int dgain_adj = adj / 4;
+      if (dgain_adj == 0) dgain_adj = (adj > 0) ? 1 : -1; // Ensure it never stalls
+      *current_dgain = (*current_dgain + dgain_adj > 1024) ? 1024 : *current_dgain + dgain_adj;
+      set_camera_control(subdev_fd, 3, *current_dgain); // Control ID 3 = Digital Gain
+    }
+  } else { // Too bright, decrease light (adj is negative here)
+    if (*current_dgain > 256) {
+      int dgain_adj = adj / 4;
+      if (dgain_adj == 0) dgain_adj = -1; // Ensure it never stalls while stepping down
+
+      *current_dgain = ((int)*current_dgain + dgain_adj < 256) ? 256 : *current_dgain + dgain_adj;
+      set_camera_control(subdev_fd, 3, *current_dgain);
+    } else if (*current_again > 0) {
+      *current_again = ((int)*current_again + (adj/2) < 0) ? 0 : *current_again + (adj/2);
+      set_camera_control(subdev_fd, 2, *current_again);
+    } else if (*current_exp > 1) {
+      *current_exp = ((int)*current_exp + adj < 1) ? 1 : *current_exp + adj;
+      set_camera_control(subdev_fd, 1, *current_exp);
+    }
+  }
+
+  return 0;
+}
+
 /* Orchestrator Function */
 int isp_process_frame(isp_context_t *ctx, const uint8_t *src, uint16_t *dst,
                       img_t *out_rgb, int frame_index) {
@@ -452,6 +548,9 @@ int isp_process_frame(isp_context_t *ctx, const uint8_t *src, uint16_t *dst,
     isp_pass_black_level_subtraction(ctx, dst);
   }
 
+  if(ctx->config.enable_aec) {
+    isp_pass_aec_stats(ctx, dst);
+  }
   if (ctx->config.enable_awb) {
     isp_pass_auto_white_balance_stats(ctx, dst);
     isp_pass_apply_white_balance(ctx, dst);

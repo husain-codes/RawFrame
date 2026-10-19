@@ -59,12 +59,13 @@ int main() {
                              .stride = capture_format.stride,
                              .input_format = IMG_FMT_BAYER_10BIT,
                              .output_format = IMG_FMT_RGB24,
-                             .black_level = 16,
+                             .black_level = 64,
                              .enable_bls = true,
                              .enable_awb = true,
                              .enable_demosaic = true,
                              .enable_gamma_correction = true,
-                             .enable_ccm = true};
+                             .enable_ccm = true,
+                             .enable_aec = true};
   if (isp_init(isp_ctx, &isp_config) < 0) {
     fprintf(stderr, "Fatal: Could not initialize ISP.\n");
     isp_destroy(isp_ctx);
@@ -74,19 +75,22 @@ int main() {
 
   // set the camera controls if needed (example: exposure, gain, etc.)
   int subdev_fd = open_v4l2_subdevice("/dev/v4l-subdev2");
+  uint32_t cur_exp = 400; // Example initial exposure value
+  uint32_t cur_again = 0;  // Example initial gain value
+  uint32_t cur_dgain = 256; // Example initial digital gain value
+
   if(subdev_fd < 0) {
     fprintf(stderr, "Warning: Failed to open v4l2 subdevice for controls\n");
   } else {
-    if (set_camera_control(subdev_fd, 1, 3500) < 0) {
+    if (set_camera_control(subdev_fd, 1, 400) < 0) {
       fprintf(stderr, "Warning: Failed to set exposure control\n");
     }
-    if( set_camera_control(subdev_fd, 2, 100) < 0) {
+    if( set_camera_control(subdev_fd, 2, 0) < 0) {
       fprintf(stderr, "Warning: Failed to set gain control\n");
     }
-    if (set_camera_control(subdev_fd, 3, 4095) < 0) {
+    if (set_camera_control(subdev_fd, 3, 256) < 0) {
       fprintf(stderr, "Warning: Failed to set digital gain\n");
     }
-    v4l2_subdevice_close(subdev_fd);
   }
 
   // 3. Start the hardware stream
@@ -133,6 +137,11 @@ int main() {
         img_destroy(out_rgb);
         break;
       }
+
+      // Adjust AEC based on next frame
+      if (isp_ctx->config.enable_aec) {
+          isp_pass_update_aec(subdev_fd,isp_ctx->current_luma, &cur_exp, &cur_again, &cur_dgain);
+      }
       // Save the raw pixels to disk
       char filename[64];
       snprintf(filename, sizeof(filename), "frame_%03d.bmp", i);
@@ -175,6 +184,7 @@ int main() {
   free(isp_output_buffer);
   printf("Shutting down camera hardware...\n");
   v4l2_device_close(camera); // This calls stop() and unmaps memory internally
+  v4l2_subdevice_close(subdev_fd);
 
   printf("Done! Successfully captured %d frames.\n", total_frames);
   return EXIT_SUCCESS;

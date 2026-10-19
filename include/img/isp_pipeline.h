@@ -3,6 +3,9 @@
 
 #include <img/img.h>
 
+#define TARGET_LUMA 120
+#define AEC_TOLERANCE 10
+
 // Lifecycle States
 typedef enum {
   ISP_STATE_UNINIT = 0,
@@ -28,6 +31,7 @@ typedef struct {
   int enable_blur;
   int enable_gamma_correction;
   int enable_ccm;
+  int enable_aec;
 } isp_config_t;
 
 // ISP Context (State Machinery)
@@ -35,6 +39,7 @@ typedef struct {
   isp_state_t state;
   isp_config_t config;
   uint8_t gamma_lut[256]; // Gamma LUT for 8-bit output
+  int current_luma; // Current average luminance for AEC
 
   // Dynamic 3A Gains
   float r_gain;
@@ -53,13 +58,16 @@ void isp_destroy(isp_context_t *ctx);
 int isp_process_frame(isp_context_t *ctx, const uint8_t *src, uint16_t *dst,
                       img_t *out_rgb, int frame_index);
 
-// Empty Pass Stubs
+// Pass Stubs
 int isp_pass_black_level_subtraction(isp_context_t *ctx, uint16_t *frame);
 int isp_pass_auto_white_balance_stats(isp_context_t *ctx,
                                       const uint16_t *frame);
 int isp_pass_apply_white_balance(isp_context_t *ctx, uint16_t *frame);
 int isp_convert_16bitraw_to_img(isp_context_t *ctx, const uint16_t *src,
                                 img_t *dst);
+int isp_pass_aec_stats(isp_context_t *ctx, const uint16_t *frame);
+int isp_pass_update_aec(int subdev_fd, int current_luma,
+  uint32_t *current_exp, uint32_t *current_again, uint32_t *current_dgain);
 int isp_pass_demosaic(isp_context_t *ctx, const img_t *src, img_t *dst);
 int isp_pass_gamma_correction(isp_context_t *ctx, img_t *img);
 int isp_pass_ccm(isp_context_t *ctx, img_t *img);
