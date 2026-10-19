@@ -28,6 +28,7 @@ set(RAWFRAME_CORE
     src/core/img_convert.c
     src/core/img_pipeline.c
     src/state/isp_pipeline.c
+    src/rawframe_api.c        # ADDED: Your new Qt Facade API
 )
 
 set(RAWFRAME_IO
@@ -63,15 +64,20 @@ set(RAWFRAME_DISPLAY)
 # Create Library
 # ===============================
 
-add_library(rawframe STATIC
+# CHANGED: STATIC is now SHARED to produce librawframe.so
+add_library(rawframe SHARED
     ${RAWFRAME_CORE}
     ${RAWFRAME_IO}
     ${RAWFRAME_PROCESSING}
     ${RAWFRAME_DISPLAY}
 )
+
 add_library(unity STATIC third_party/Unity/src/unity.c)
 target_include_directories(unity PUBLIC third_party/Unity/src)
 target_include_directories(rawframe PUBLIC include)
+
+# ADDED: Link the math library directly to the shared object
+target_link_libraries(rawframe PUBLIC m)
 
 if(RAWFRAME_ENABLE_SDL)
     target_link_libraries(rawframe PUBLIC SDL2::SDL2)
@@ -95,7 +101,8 @@ target_link_libraries(example_blur rawframe)
 add_executable(example_capture examples/example_capture.c)
 target_link_libraries(example_capture rawframe)
 add_executable(example_v4l2 examples/example_v4l2.c)
-target_link_libraries(example_v4l2 rawframe m)
+target_link_libraries(example_v4l2 rawframe) # Removed 'm', now inherited automatically
+
 #add_executable(example_processing examples/example_processing.c)
 #target_link_libraries(example_processing rawframe)
 
@@ -116,5 +123,5 @@ target_link_libraries(test_blur rawframe unity)
 add_test(NAME test_blur COMMAND test_blur)
 
 add_executable(test_isp tests/test_isp.c)
-target_link_libraries(test_isp rawframe unity m)
+target_link_libraries(test_isp rawframe unity) # Removed 'm', inherited automatically
 add_test(NAME test_isp COMMAND test_isp)
