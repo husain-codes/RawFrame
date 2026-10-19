@@ -3,9 +3,6 @@
 
 #include <img/img.h>
 
-#define TARGET_LUMA 120
-#define AEC_TOLERANCE 10
-
 // Lifecycle States
 typedef enum {
   ISP_STATE_UNINIT = 0,

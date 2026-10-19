@@ -6,6 +6,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define BAYER_10BIT_BLACK_LEVEL 64
+#define INITIAL_EXPOSURE 400
+#define INITIAL_ANALOG_GAIN 0
+#define INITIAL_DIGITAL_GAIN 256
+
 // A helper macro so we don't have to include <linux/videodev2.h> just for
 // v4l2_fourcc
 #define MAKE_FOURCC(a, b, c, d)                                                \
@@ -59,7 +64,7 @@ int main() {
                              .stride = capture_format.stride,
                              .input_format = IMG_FMT_BAYER_10BIT,
                              .output_format = IMG_FMT_RGB24,
-                             .black_level = 64,
+                             .black_level = BAYER_10BIT_BLACK_LEVEL,
                              .enable_bls = true,
                              .enable_awb = true,
                              .enable_demosaic = true,
@@ -75,20 +80,23 @@ int main() {
 
   // set the camera controls if needed (example: exposure, gain, etc.)
   int subdev_fd = open_v4l2_subdevice("/dev/v4l-subdev2");
-  uint32_t cur_exp = 400; // Example initial exposure value
-  uint32_t cur_again = 0;  // Example initial gain value
-  uint32_t cur_dgain = 256; // Example initial digital gain value
+  uint32_t cur_exp = INITIAL_EXPOSURE;
+  uint32_t cur_again = INITIAL_ANALOG_GAIN;
+  uint32_t cur_dgain = INITIAL_DIGITAL_GAIN;
 
-  if(subdev_fd < 0) {
+  if (subdev_fd < 0) {
     fprintf(stderr, "Warning: Failed to open v4l2 subdevice for controls\n");
   } else {
-    if (set_camera_control(subdev_fd, 1, 400) < 0) {
+    if (set_camera_control(subdev_fd, V4L2_CAMERA_CONTROL_EXPOSURE,
+                           cur_exp) < 0) {
       fprintf(stderr, "Warning: Failed to set exposure control\n");
     }
-    if( set_camera_control(subdev_fd, 2, 0) < 0) {
+    if (set_camera_control(subdev_fd, V4L2_CAMERA_CONTROL_ANALOG_GAIN,
+                           cur_again) < 0) {
       fprintf(stderr, "Warning: Failed to set gain control\n");
     }
-    if (set_camera_control(subdev_fd, 3, 256) < 0) {
+    if (set_camera_control(subdev_fd, V4L2_CAMERA_CONTROL_DIGITAL_GAIN,
+                           cur_dgain) < 0) {
       fprintf(stderr, "Warning: Failed to set digital gain\n");
     }
   }
@@ -140,7 +148,8 @@ int main() {
 
       // Adjust AEC based on next frame
       if (isp_ctx->config.enable_aec) {
-          isp_pass_update_aec(subdev_fd,isp_ctx->current_luma, &cur_exp, &cur_again, &cur_dgain);
+        isp_pass_update_aec(subdev_fd, isp_ctx->current_luma, &cur_exp,
+                            &cur_again, &cur_dgain);
       }
       // Save the raw pixels to disk
       char filename[64];

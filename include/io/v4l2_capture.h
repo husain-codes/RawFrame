@@ -65,6 +65,12 @@ int v4l2_device_qbuf(v4l2_device_t *dev, uint32_t buffer_index);
 int open_v4l2_subdevice(const char *subdev_path);
 
 /* Sets a V4L2 control on the device */
+typedef enum {
+  V4L2_CAMERA_CONTROL_EXPOSURE = 1,
+  V4L2_CAMERA_CONTROL_ANALOG_GAIN,
+  V4L2_CAMERA_CONTROL_DIGITAL_GAIN
+} v4l2_camera_control_t;
+
 int set_camera_control(int fd , uint32_t control_id, uint32_t value);
 
 int v4l2_subdevice_close(int fd);

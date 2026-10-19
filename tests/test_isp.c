@@ -84,22 +84,22 @@ void test_isp_awb_stats_and_apply_success(void) {
 
   // 3. Compute AWB Stats
   // Expected: avg_r = 10, avg_g = 20, avg_b = 40
-  // Expected Gains: r_gain = 20/10 = 2.0f, b_gain = 20/40 = 0.5f
+  // Expected Gains: r_gain = 20/10 = 2.0f; b_gain = 20/40 is clamped to 1.4f.
   TEST_ASSERT_EQUAL(0, isp_pass_auto_white_balance_stats(ctx, raw_frame));
   TEST_ASSERT_FLOAT_WITHIN(0.01f, 2.0f, ctx->r_gain);
   TEST_ASSERT_FLOAT_WITHIN(0.01f, 1.0f, ctx->g_gain);
-  TEST_ASSERT_FLOAT_WITHIN(0.01f, 0.5f, ctx->b_gain);
+  TEST_ASSERT_FLOAT_WITHIN(0.01f, 1.4f, ctx->b_gain);
 
   // 4. Apply White Balance Gains
   TEST_ASSERT_EQUAL(0, isp_pass_apply_white_balance(ctx, raw_frame));
 
   // 5. Assert applied pixel values
   // Red:  10 * 2.0 = 20
-  // Blue: 40 * 0.5 = 20
+  // Blue: 40 * 1.4 = 56
   // Green: Unchanged = 20
   TEST_ASSERT_EQUAL_UINT16(20, raw_frame[0]); // Top-Left Red
   TEST_ASSERT_EQUAL_UINT16(20, raw_frame[1]); // Top-Right Green
-  TEST_ASSERT_EQUAL_UINT16(20, raw_frame[5]); // Bottom-Right Blue
+  TEST_ASSERT_EQUAL_UINT16(56, raw_frame[5]); // Bottom-Right Blue
 
   // Clean up
   free(ctx);

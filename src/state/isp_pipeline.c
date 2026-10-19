@@ -5,6 +5,27 @@
 #include <stdlib.h>
 #include <math.h>
 
+#define ISP_AEC_TARGET_LUMA 120
+#define ISP_AEC_LUMA_TOLERANCE 10
+#define ISP_AEC_LUMA_LARGE_ERROR 80
+#define ISP_AEC_LUMA_MEDIUM_ERROR 40
+#define ISP_AEC_P_GAIN_SMALL_ERROR 0.1f
+#define ISP_AEC_P_GAIN_MEDIUM_ERROR 0.5f
+#define ISP_AEC_P_GAIN_LARGE_ERROR 1.0f
+#define ISP_AEC_MAX_EXPOSURE 3500
+#define ISP_AEC_MIN_EXPOSURE 1
+#define ISP_AEC_MAX_ANALOG_GAIN 232
+#define ISP_AEC_MIN_DIGITAL_GAIN 256
+#define ISP_AEC_MAX_DIGITAL_GAIN 1024
+#define ISP_AEC_ANALOG_GAIN_ADJUSTMENT_DIVISOR 2
+#define ISP_AEC_DIGITAL_GAIN_ADJUSTMENT_DIVISOR 4
+
+#define ISP_AWB_HIGHLIGHT_THRESHOLD 1000
+#define ISP_AWB_RED_GAIN_MIN 1.55f
+#define ISP_AWB_RED_GAIN_MAX 2.8f
+#define ISP_AWB_BLUE_GAIN_MIN 1.4f
+#define ISP_AWB_BLUE_GAIN_MAX 2.8f
+
 isp_context_t *isp_create(void) {
   printf("[ISP_API] %s()\n", __func__);
   isp_context_t *ctx = (isp_context_t *)calloc(1, sizeof(isp_context_t));
@@ -141,7 +162,7 @@ int isp_pass_auto_white_balance_stats(isp_context_t *ctx,
       uint16_t value = pixel[y * width + x];
       // Ignore blown-out highlights (like the sun or clipped sky)
       // Assuming 10-bit data, ignore anything near the 1023 max
-      if (value > 1000) {
+      if (value > ISP_AWB_HIGHLIGHT_THRESHOLD) {
           continue;
       }
       if (!(y & 1) && !(x & 1)) {
@@ -179,11 +200,15 @@ int isp_pass_auto_white_balance_stats(isp_context_t *ctx,
 
   // Apply AWB Gain Clamping to prevent Color Failure
   // IMX219 typical safe bounds: R [1.2 - 2.8], B [1.2 - 2.8]
-  if (ctx->r_gain < 1.55f) ctx->r_gain = 1.55f;
-  if (ctx->r_gain > 2.8f) ctx->r_gain = 2.8f;
+  if (ctx->r_gain < ISP_AWB_RED_GAIN_MIN)
+    ctx->r_gain = ISP_AWB_RED_GAIN_MIN;
+  if (ctx->r_gain > ISP_AWB_RED_GAIN_MAX)
+    ctx->r_gain = ISP_AWB_RED_GAIN_MAX;
 
-  if (ctx->b_gain < 1.4f) ctx->b_gain = 1.4f;
-  if (ctx->b_gain > 2.8f) ctx->b_gain = 2.8f;
+  if (ctx->b_gain < ISP_AWB_BLUE_GAIN_MIN)
+    ctx->b_gain = ISP_AWB_BLUE_GAIN_MIN;
+  if (ctx->b_gain > ISP_AWB_BLUE_GAIN_MAX)
+    ctx->b_gain = ISP_AWB_BLUE_GAIN_MAX;
 
   printf("  -> DEBUG: AWB Multipliers - R: %.3f | G: %.3f | B: %.3f\n",
          ctx->r_gain, ctx->g_gain, ctx->b_gain);
@@ -461,7 +486,8 @@ int isp_pass_aec_stats(isp_context_t *ctx, const uint16_t *frame) {
   }
 
   int avg_luma = (int)total_luma / (double)total_pixels;
-  printf("  -> DEBUG: Current Avg Frame Luma: %d / Target: %d\n", avg_luma, TARGET_LUMA);
+  printf("  -> DEBUG: Current Avg Frame Luma: %d / Target: %d\n", avg_luma,
+         ISP_AEC_TARGET_LUMA);
 
   // Store the average luminance in the context for AEC adjustment
   ctx->current_luma = avg_luma;
@@ -476,49 +502,74 @@ int isp_pass_update_aec(int subdev_fd, int current_luma, uint32_t *current_exp, 
     return -1;
   }
 
-  int luma_diff = TARGET_LUMA - current_luma;
+  int luma_diff = ISP_AEC_TARGET_LUMA - current_luma;
 
   // If the difference is within the tolerance, no adjustment is needed
-  if (abs(luma_diff) <= AEC_TOLERANCE) {
+  if (abs(luma_diff) <= ISP_AEC_LUMA_TOLERANCE) {
     printf("  -> DEBUG: Luma within tolerance. No AEC adjustment needed.\n");
     return 0;
   }
 
   // Simple proportional control for exposure and gain adjustment
-  float p_gain = 0.1f; // Tune this prevent oscillating/flickering
-  if (abs(luma_diff) > 80) {
-      p_gain = 1.0f;  // Massive steps when completely wrong
-  } else if (abs(luma_diff) > 40) {
-      p_gain = 0.5f;  // Medium steps as it gets closer
+  float p_gain = ISP_AEC_P_GAIN_SMALL_ERROR;
+  if (abs(luma_diff) > ISP_AEC_LUMA_LARGE_ERROR) {
+      p_gain = ISP_AEC_P_GAIN_LARGE_ERROR;
+  } else if (abs(luma_diff) > ISP_AEC_LUMA_MEDIUM_ERROR) {
+      p_gain = ISP_AEC_P_GAIN_MEDIUM_ERROR;
   }
   int adj = (int)(luma_diff * p_gain);
 
   if (adj > 0) { // Too dark, increase light
-    if (*current_exp < 3500) {
-      *current_exp = (*current_exp + adj > 3500) ? 3500 : *current_exp + adj;
-      set_camera_control(subdev_fd, 1, *current_exp);
-    } else if (*current_again < 232) {
-      *current_again = (*current_again + (adj/2) > 232) ? 232 : *current_again + (adj/2);
-      set_camera_control(subdev_fd, 2, *current_again);
-    } else if (*current_dgain < 1024) {
-      int dgain_adj = adj / 4;
+    if (*current_exp < ISP_AEC_MAX_EXPOSURE) {
+      *current_exp = (*current_exp + adj > ISP_AEC_MAX_EXPOSURE)
+                         ? ISP_AEC_MAX_EXPOSURE
+                         : *current_exp + adj;
+      set_camera_control(subdev_fd, V4L2_CAMERA_CONTROL_EXPOSURE,
+                         *current_exp);
+    } else if (*current_again < ISP_AEC_MAX_ANALOG_GAIN) {
+      *current_again =
+          (*current_again + (adj / ISP_AEC_ANALOG_GAIN_ADJUSTMENT_DIVISOR) >
+           ISP_AEC_MAX_ANALOG_GAIN)
+              ? ISP_AEC_MAX_ANALOG_GAIN
+              : *current_again +
+                    (adj / ISP_AEC_ANALOG_GAIN_ADJUSTMENT_DIVISOR);
+      set_camera_control(subdev_fd, V4L2_CAMERA_CONTROL_ANALOG_GAIN,
+                         *current_again);
+    } else if (*current_dgain < ISP_AEC_MAX_DIGITAL_GAIN) {
+      int dgain_adj = adj / ISP_AEC_DIGITAL_GAIN_ADJUSTMENT_DIVISOR;
       if (dgain_adj == 0) dgain_adj = (adj > 0) ? 1 : -1; // Ensure it never stalls
-      *current_dgain = (*current_dgain + dgain_adj > 1024) ? 1024 : *current_dgain + dgain_adj;
-      set_camera_control(subdev_fd, 3, *current_dgain); // Control ID 3 = Digital Gain
+      *current_dgain = (*current_dgain + dgain_adj > ISP_AEC_MAX_DIGITAL_GAIN)
+                           ? ISP_AEC_MAX_DIGITAL_GAIN
+                           : *current_dgain + dgain_adj;
+      set_camera_control(subdev_fd, V4L2_CAMERA_CONTROL_DIGITAL_GAIN,
+                         *current_dgain);
     }
   } else { // Too bright, decrease light (adj is negative here)
-    if (*current_dgain > 256) {
-      int dgain_adj = adj / 4;
+    if (*current_dgain > ISP_AEC_MIN_DIGITAL_GAIN) {
+      int dgain_adj = adj / ISP_AEC_DIGITAL_GAIN_ADJUSTMENT_DIVISOR;
       if (dgain_adj == 0) dgain_adj = -1; // Ensure it never stalls while stepping down
 
-      *current_dgain = ((int)*current_dgain + dgain_adj < 256) ? 256 : *current_dgain + dgain_adj;
-      set_camera_control(subdev_fd, 3, *current_dgain);
+      *current_dgain = ((int)*current_dgain + dgain_adj <
+                        ISP_AEC_MIN_DIGITAL_GAIN)
+                           ? ISP_AEC_MIN_DIGITAL_GAIN
+                           : *current_dgain + dgain_adj;
+      set_camera_control(subdev_fd, V4L2_CAMERA_CONTROL_DIGITAL_GAIN,
+                         *current_dgain);
     } else if (*current_again > 0) {
-      *current_again = ((int)*current_again + (adj/2) < 0) ? 0 : *current_again + (adj/2);
-      set_camera_control(subdev_fd, 2, *current_again);
+      *current_again =
+          ((int)*current_again +
+           (adj / ISP_AEC_ANALOG_GAIN_ADJUSTMENT_DIVISOR) < 0)
+              ? 0
+              : *current_again +
+                    (adj / ISP_AEC_ANALOG_GAIN_ADJUSTMENT_DIVISOR);
+      set_camera_control(subdev_fd, V4L2_CAMERA_CONTROL_ANALOG_GAIN,
+                         *current_again);
     } else if (*current_exp > 1) {
-      *current_exp = ((int)*current_exp + adj < 1) ? 1 : *current_exp + adj;
-      set_camera_control(subdev_fd, 1, *current_exp);
+      *current_exp = ((int)*current_exp + adj < ISP_AEC_MIN_EXPOSURE)
+                         ? ISP_AEC_MIN_EXPOSURE
+                         : *current_exp + adj;
+      set_camera_control(subdev_fd, V4L2_CAMERA_CONTROL_EXPOSURE,
+                         *current_exp);
     }
   }
 

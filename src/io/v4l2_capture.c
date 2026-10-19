@@ -189,11 +189,11 @@ int open_v4l2_subdevice(const char *subdev_path) {
 }
 
 int set_camera_control(int fd, uint32_t control_id, uint32_t value) {
-  if(control_id ==1)
+  if (control_id == V4L2_CAMERA_CONTROL_EXPOSURE)
     control_id = V4L2_CID_EXPOSURE;
-  else if(control_id == 2)
+  else if (control_id == V4L2_CAMERA_CONTROL_ANALOG_GAIN)
     control_id = V4L2_CID_ANALOGUE_GAIN;
-  else if(control_id == 3)
+  else if (control_id == V4L2_CAMERA_CONTROL_DIGITAL_GAIN)
     control_id = 0x009f0905; // hardware digital gain
 
   struct v4l2_control control = {0};
